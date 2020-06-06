@@ -92,7 +92,7 @@ struct option longopts[] = {{"interface", required_argument, NULL, 'i'},
                             {"llfeedback", no_argument, NULL, 'f'},
                             {0}};
 
-void usage(int status)
+static void usage(int status)
 {
     if (status != 0) {
         fprintf(stderr, "Try `%s --help' for more information.\n", progname);
@@ -135,7 +135,7 @@ void usage(int status)
     exit(status);
 }
 
-int set_kernel_options()
+static int set_kernel_options()
 {
     int i, fd = -1;
     char on = '1';
@@ -287,7 +287,7 @@ int attach_callback_func(int fd, callback_func_t func)
    are located in the current directory. use those. Otherwise fall
    back to modprobe. */
 
-void load_modules(char *ifname)
+static void load_modules(char *ifname)
 {
     struct stat st;
     char buf[1024], *l = NULL;
@@ -333,7 +333,7 @@ void load_modules(char *ifname)
     }
 }
 
-void remove_modules(void)
+static void remove_modules(void)
 {
     int ret;
 
@@ -344,7 +344,7 @@ void remove_modules(void)
     }
 }
 
-void host_init(char *ifname)
+static void host_init(char *ifname)
 {
     struct sockaddr_in *ina;
     char buf[1024], tmp_ifname[IFNAMSIZ],
@@ -470,9 +470,8 @@ void host_init(char *ifname)
 }
 
 /* This signal handler ensures clean exits */
-void signal_handler(int type)
+static void signal_handler(int type)
 {
-
     switch (type) {
     case SIGSEGV:
         alog(LOG_ERR, 0, __FUNCTION__,

@@ -206,7 +206,7 @@ static struct wireless_iface *iw_get_interface_data(int ifindex)
 }
 
 /* Ugly, ugly way to get ip from eth address */
-int mac_to_ip(struct sockaddr *hwaddr, struct in_addr *ip_addr, char *ifname)
+static int mac_to_ip(struct sockaddr *hwaddr, struct in_addr *ip_addr, char *ifname)
 {
     FILE *fp;
     char ip[100];
