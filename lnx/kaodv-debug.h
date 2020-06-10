@@ -24,11 +24,13 @@
 
 #include <linux/in.h>
 
+#include "kaodv-netlink.h"
+
 #ifdef DEBUG
 //#undef DEBUG
-#define KAODV_DEBUG(fmt, ...) trace(fmt, ##__VA_ARGS__)
+#define KAODV_DEBUG(netlink, fmt, ...) trace(netlink, fmt, ##__VA_ARGS__)
 #else
-#define KAODV_DEBUG(fmt, ...)
+#define KAODV_DEBUG(netlink, fmt, ...)
 #endif
 
 static inline char *print_ip(__u32 addr)
@@ -59,6 +61,6 @@ static inline char *print_eth(char *addr)
     return buf;
 }
 
-int trace(const char *fmt, ...);
+int trace(struct netlink_state *netlink, const char *fmt, ...);
 
 #endif /* !KAODV-DEBUG_H_ */

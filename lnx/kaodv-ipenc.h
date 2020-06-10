@@ -45,6 +45,7 @@ struct min_ipenc_hdr {
     u_int32_t daddr;
     /*    u_int32_t saddr; */
 };
-struct sk_buff *ip_pkt_encapsulate(struct sk_buff *skb, __u32 dest);
+struct sk_buff *ip_pkt_encapsulate(struct net *net, struct sk_buff *skb,
+                                   __u32 dest);
 struct sk_buff *ip_pkt_decapsulate(struct sk_buff *skb);
 #endif /* _KAODV_IPENC_H */

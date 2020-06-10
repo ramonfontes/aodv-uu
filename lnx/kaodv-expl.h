@@ -35,16 +35,26 @@ struct expl_entry {
     int ifindex;
 };
 
-void kaodv_expl_init(void);
-void kaodv_expl_flush(void);
-int kaodv_expl_get(__u32 daddr, struct expl_entry *e_in);
-int kaodv_expl_add(__u32 daddr, __u32 nhop, unsigned long time,
-                   unsigned short flags, int ifindex);
-int kaodv_expl_update(__u32 daddr, __u32 nhop, unsigned long time,
-                      unsigned short flags, int ifindex);
+struct expl_state {
+    unsigned int expl_len;
+    rwlock_t expl_lock;
+#ifdef EXPL_TIMER
+    struct timer_list expl_timer;
+#endif
+    struct list_head expl_head;
+};
 
-int kaodv_expl_del(__u32 daddr);
-void kaodv_expl_fini(void);
+void kaodv_expl_init_ns(struct expl_state *state);
+void kaodv_expl_flush(struct expl_state *state);
+int kaodv_expl_get(struct expl_state *state, __u32 daddr,
+                   struct expl_entry *e_in);
+int kaodv_expl_add(struct expl_state *state, __u32 daddr, __u32 nhop,
+                   unsigned long time, unsigned short flags, int ifindex);
+int kaodv_expl_update(struct expl_state *state, __u32 daddr, __u32 nhop,
+                      unsigned long time, unsigned short flags, int ifindex);
+
+int kaodv_expl_del(struct expl_state *state, __u32 daddr);
+void kaodv_expl_fini_ns(struct expl_state *state);
 
 #endif /* __KERNEL__ */
 

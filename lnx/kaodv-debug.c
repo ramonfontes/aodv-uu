@@ -25,7 +25,7 @@
 #include "kaodv-debug.h"
 #include "kaodv-netlink.h"
 
-int trace(const char *fmt, ...)
+int trace(struct netlink_state *netlink, const char *fmt, ...)
 {
     char buf[512];
     va_list args;
@@ -38,7 +38,7 @@ int trace(const char *fmt, ...)
     va_end(args);
 
     /* Send the message off to user space... */
-    kaodv_netlink_send_debug_msg(buf, len + 1);
+    kaodv_netlink_send_debug_msg(netlink, buf, len + 1);
 
     return 0;
 }

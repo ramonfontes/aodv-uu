@@ -25,8 +25,13 @@
 /* A communication link between the kernel and the AODV daemon */
 
 #include <linux/netlink.h>
-#include <linux/rtnetlink.h>
+//#include <linux/semaphore.h>
 #include <linux/types.h>
+
+struct netlink_state {
+    int peer_pid;
+    struct sock *kaodvnl;
+};
 
 /* Setting to MAX_LINKS-1 should ensure we use a free NETLINK
  * socket type. */
@@ -130,11 +135,17 @@ typedef struct kaodv_conf_msg {
 int kaodv_netlink_init(void);
 void kaodv_netlink_fini(void);
 
-void kaodv_netlink_send_rt_msg(int type, __u32 src, __u32 dest);
-void kaodv_netlink_send_rt_update_msg(int type, __u32 src, __u32 dest,
-                                      int ifindex);
-void kaodv_netlink_send_rerr_msg(int type, __u32 src, __u32 dest, int ifindex);
-void kaodv_netlink_send_debug_msg(char *buf, int len);
+int kaodv_netlink_init_ns(struct netlink_state *state, struct net *net);
+void kaodv_netlink_fini_ns(struct netlink_state *state);
+
+void kaodv_netlink_send_rt_msg(struct netlink_state *state, int type, __u32 src,
+                               __u32 dest);
+void kaodv_netlink_send_rt_update_msg(struct netlink_state *state, int type,
+                                      __u32 src, __u32 dest, int ifindex);
+void kaodv_netlink_send_rerr_msg(struct netlink_state *state, int type,
+                                 __u32 src, __u32 dest, int ifindex);
+void kaodv_netlink_send_debug_msg(struct netlink_state *state, char *buf,
+                                  int len);
 
 #endif /* __KERNEL__ */
 

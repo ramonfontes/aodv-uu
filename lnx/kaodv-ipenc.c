@@ -42,9 +42,9 @@ static u_int16_t ip_csum(unsigned short *buf, int nshorts)
     return ~sum;
 }
 
-struct sk_buff *ip_pkt_encapsulate(struct sk_buff *skb, __u32 dest)
+struct sk_buff *ip_pkt_encapsulate(struct net *net, struct sk_buff *skb,
+                                   __u32 dest)
 {
-
     struct min_ipenc_hdr *ipe;
     struct sk_buff *nskb;
     struct iphdr *iph;
@@ -102,7 +102,7 @@ struct sk_buff *ip_pkt_encapsulate(struct sk_buff *skb, __u32 dest)
     ip_send_check(iph);
 
     if (iph->id == 0)
-        ip_select_ident(&init_net, skb, NULL);
+        ip_select_ident(net, skb, NULL);
 
     return skb;
 }

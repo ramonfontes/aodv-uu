@@ -19,7 +19,6 @@
  * Author: Erik Nordström, <erik.nordstrom@it.uu.se>
  *
  *****************************************************************************/
-#include <linux/version.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/security.h>
@@ -27,20 +26,15 @@
 #include <linux/spinlock.h>
 #include <linux/version.h>
 
+#include <net/net_namespace.h>
+#include <net/netns/generic.h>
 #include <net/sock.h>
 
 #include "kaodv-debug.h"
-#include "kaodv-expl.h"
+#include "kaodv-mod.h"
 #include "kaodv-netlink.h"
 #include "kaodv-queue.h"
 #include "kaodv.h"
-
-static int peer_pid;
-static struct sock *kaodvnl;
-
-static DEFINE_SEMAPHORE(kaodvnl_sem);
-
-extern int active_route_timeout, qual_th, is_gateway;
 
 static struct sk_buff *kaodv_netlink_build_msg(int type, void *data, int len)
 {
@@ -78,7 +72,8 @@ nlmsg_failure:
     return NULL;
 }
 
-void kaodv_netlink_send_debug_msg(char *buf, int len)
+void kaodv_netlink_send_debug_msg(struct netlink_state *state, char *buf,
+                                  int len)
 {
     struct sk_buff *skb = NULL;
 
@@ -89,10 +84,12 @@ void kaodv_netlink_send_debug_msg(char *buf, int len)
         return;
     }
 
-    netlink_broadcast(kaodvnl, skb, peer_pid, AODVGRP_NOTIFY, GFP_USER);
+    netlink_broadcast(state->kaodvnl, skb, state->peer_pid, AODVGRP_NOTIFY,
+                      GFP_USER);
 }
 
-void kaodv_netlink_send_rt_msg(int type, __u32 src, __u32 dest)
+void kaodv_netlink_send_rt_msg(struct netlink_state *state, int type, __u32 src,
+                               __u32 dest)
 {
     struct sk_buff *skb = NULL;
     struct kaodv_rt_msg m;
@@ -110,11 +107,11 @@ void kaodv_netlink_send_rt_msg(int type, __u32 src, __u32 dest)
     }
 
     /* 	netlink_unicast(kaodvnl, skb, peer_pid, MSG_DONTWAIT); */
-    netlink_broadcast(kaodvnl, skb, 0, AODVGRP_NOTIFY, GFP_USER);
+    netlink_broadcast(state->kaodvnl, skb, 0, AODVGRP_NOTIFY, GFP_USER);
 }
 
-void kaodv_netlink_send_rt_update_msg(int type, __u32 src, __u32 dest,
-                                      int ifindex)
+void kaodv_netlink_send_rt_update_msg(struct netlink_state *state, int type,
+                                      __u32 src, __u32 dest, int ifindex)
 {
     struct sk_buff *skb = NULL;
     struct kaodv_rt_msg m;
@@ -134,10 +131,11 @@ void kaodv_netlink_send_rt_update_msg(int type, __u32 src, __u32 dest,
         return;
     }
     /* netlink_unicast(kaodvnl, skb, peer_pid, MSG_DONTWAIT); */
-    netlink_broadcast(kaodvnl, skb, 0, AODVGRP_NOTIFY, GFP_USER);
+    netlink_broadcast(state->kaodvnl, skb, 0, AODVGRP_NOTIFY, GFP_USER);
 }
 
-void kaodv_netlink_send_rerr_msg(int type, __u32 src, __u32 dest, int ifindex)
+void kaodv_netlink_send_rerr_msg(struct netlink_state *state, int type,
+                                 __u32 src, __u32 dest, int ifindex)
 {
     struct sk_buff *skb = NULL;
     struct kaodv_rt_msg m;
@@ -157,18 +155,24 @@ void kaodv_netlink_send_rerr_msg(int type, __u32 src, __u32 dest, int ifindex)
         return;
     }
     /* netlink_unicast(kaodvnl, skb, peer_pid, MSG_DONTWAIT); */
-    netlink_broadcast(kaodvnl, skb, 0, AODVGRP_NOTIFY, GFP_USER);
+    netlink_broadcast(state->kaodvnl, skb, 0, AODVGRP_NOTIFY, GFP_USER);
 }
 
-static int kaodv_netlink_receive_peer(unsigned char type, void *msg,
+static int kaodv_netlink_receive_peer(struct mod_state *mod_state,
+                                      unsigned char type, void *msg,
                                       unsigned int len)
 {
+    struct expl_state *expl;
+    struct netlink_state *netlink;
     int ret = 0;
     struct kaodv_rt_msg *m;
     struct kaodv_conf_msg *cm;
     struct expl_entry e;
 
-    KAODV_DEBUG("Received msg: %s", kaodv_msg_type_to_str(type));
+    expl = &mod_state->expl_state;
+    netlink = &mod_state->netlink_state;
+
+    KAODV_DEBUG(netlink, "Received msg: %s", kaodv_msg_type_to_str(type));
 
     switch (type) {
     case KAODVM_ADDROUTE:
@@ -177,41 +181,41 @@ static int kaodv_netlink_receive_peer(unsigned char type, void *msg,
 
         m = (struct kaodv_rt_msg *)msg;
 
-        ret = kaodv_expl_get(m->dst, &e);
+        ret = kaodv_expl_get(expl, m->dst, &e);
 
         if (ret < 0) {
-            ret = kaodv_expl_update(m->dst, m->nhop, m->time, m->flags,
-                                    m->ifindex);
+            ret = kaodv_expl_update(expl, m->dst, m->nhop, m->time,
+                                    m->flags, m->ifindex);
         } else {
-            ret =
-                kaodv_expl_add(m->dst, m->nhop, m->time, m->flags, m->ifindex);
+            ret = kaodv_expl_add(expl, m->dst, m->nhop, m->time, m->flags,
+                                 m->ifindex);
         }
-        kaodv_queue_set_verdict(KAODV_QUEUE_SEND, m->dst);
+        kaodv_queue_set_verdict(mod_state, KAODV_QUEUE_SEND, m->dst);
         break;
     case KAODVM_DELROUTE:
         if (len < sizeof(struct kaodv_rt_msg))
             return -EINVAL;
 
         m = (struct kaodv_rt_msg *)msg;
-        kaodv_expl_del(m->dst);
-        kaodv_queue_set_verdict(KAODV_QUEUE_DROP, m->dst);
+        kaodv_expl_del(expl, m->dst);
+        kaodv_queue_set_verdict(mod_state, KAODV_QUEUE_DROP, m->dst);
         break;
     case KAODVM_NOROUTE_FOUND:
         if (len < sizeof(struct kaodv_rt_msg))
             return -EINVAL;
 
         m = (struct kaodv_rt_msg *)msg;
-        KAODV_DEBUG("No route found for %s", print_ip(m->dst));
-        kaodv_queue_set_verdict(KAODV_QUEUE_DROP, m->dst);
+        KAODV_DEBUG(netlink, "No route found for %s", print_ip(m->dst));
+        kaodv_queue_set_verdict(mod_state, KAODV_QUEUE_DROP, m->dst);
         break;
     case KAODVM_CONFIG:
         if (len < sizeof(struct kaodv_conf_msg))
             return -EINVAL;
 
         cm = (struct kaodv_conf_msg *)msg;
-        active_route_timeout = cm->active_route_timeout;
-        qual_th = cm->qual_th;
-        is_gateway = cm->is_gateway;
+        mod_state->active_route_timeout = cm->active_route_timeout;
+        mod_state->qual_th = cm->qual_th;
+        mod_state->is_gateway = cm->is_gateway;
         break;
     default:
         printk("kaodv-netlink: Unknown message type\n");
@@ -223,13 +227,23 @@ static int kaodv_netlink_receive_peer(unsigned char type, void *msg,
 static int kaodv_netlink_rcv_nl_event(struct notifier_block *this,
                                       unsigned long event, void *ptr)
 {
+    struct mod_state *mod;
+    struct expl_state *expl;
+    struct queue_state *queue;
+    struct netlink_state *netlink;
     struct netlink_notify *n = ptr;
 
+    // access namespace state
+    mod = net_generic(n->net, net_id);
+    expl = &mod->expl_state;
+    queue = &mod->queue_state;
+    netlink = &mod->netlink_state;
+
     if (event == NETLINK_URELEASE && n->protocol == NETLINK_AODV && n->portid) {
-        if (n->portid == peer_pid) {
-            peer_pid = 0;
-            kaodv_expl_flush();
-            kaodv_queue_flush();
+        if (n->portid == netlink->peer_pid) {
+            netlink->peer_pid = 0;
+            kaodv_expl_flush(expl);
+            kaodv_queue_flush(queue);
         }
         return NOTIFY_DONE;
     }
@@ -248,6 +262,9 @@ static struct notifier_block kaodv_nl_notifier = {
 
 static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
 {
+    struct mod_state *mod;
+    struct netlink_state *netlink;
+
     int status, type, pid, flags, nlmsglen, skblen;
     struct nlmsghdr *nlh;
 
@@ -278,51 +295,32 @@ static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
 
     /* 	printk("kaodv_netlink: type=%d\n", type); */
     /* if (type < NLMSG_NOOP || type >= IPQM_MAX) */
-/* 		RCV_SKB_FAIL(-EINVAL); */
+    /* 		RCV_SKB_FAIL(-EINVAL); */
 
     // write_lock_bh(&queue_lock);
 
-    if (peer_pid) {
-        if (peer_pid != pid) {
+    // access namespace state
+    mod = net_generic(sock_net(skb->sk), net_id);
+    netlink = &mod->netlink_state;
+
+    if (netlink->peer_pid) {
+        if (netlink->peer_pid != pid) {
             // write_unlock_bh(&queue_lock);
             RCV_SKB_FAIL(-EBUSY);
         }
     } else
-        peer_pid = pid;
+        netlink->peer_pid = pid;
 
     // write_unlock_bh(&queue_lock);
 
-    status = kaodv_netlink_receive_peer(type, NLMSG_DATA(nlh),
+    status = kaodv_netlink_receive_peer(mod, type, NLMSG_DATA(nlh),
                                         skblen - NLMSG_LENGTH(0));
     if (status < 0)
         RCV_SKB_FAIL(status);
 
     if (flags & NLM_F_ACK)
         netlink_ack(skb, nlh, 0, NULL);
-    return;
 }
-
-#if 0
-static void kaodv_netlink_rcv_sk(struct sock *sk, int len)
-{
-	do {
-		struct sk_buff *skb;
-
-		if (down_trylock(&kaodvnl_sem))
-			return;
-
-		while ((skb = skb_dequeue(&sk->sk_receive_queue)) != NULL) {
-			kaodv_netlink_rcv_skb(skb);
-			kfree_skb(skb);
-		}
-
-		up(&kaodvnl_sem);
-
-	} while (kaodvnl && kaodvnl->sk_receive_queue.qlen);
-
-	return;
-}
-#endif
 
 static struct netlink_kernel_cfg kaodvnlcfg = {
     groups : AODVGRP_MAX,
@@ -332,23 +330,26 @@ static struct netlink_kernel_cfg kaodvnlcfg = {
 
 int kaodv_netlink_init(void)
 {
-    netlink_register_notifier(&kaodv_nl_notifier);
+    return netlink_register_notifier(&kaodv_nl_notifier);
+}
 
-    kaodvnl = netlink_kernel_create(&init_net, NETLINK_AODV, &kaodvnlcfg);
+void kaodv_netlink_fini(void)
+{
+    netlink_unregister_notifier(&kaodv_nl_notifier);
+}
 
-    if (kaodvnl == NULL) {
+int kaodv_netlink_init_ns(struct netlink_state *state, struct net *net)
+{
+    state->kaodvnl = netlink_kernel_create(net, NETLINK_AODV, &kaodvnlcfg);
+
+    if (state->kaodvnl == NULL) {
         printk(KERN_ERR "kaodv_netlink: failed to create netlink socket\n");
-        netlink_unregister_notifier(&kaodv_nl_notifier);
         return -1;
     }
     return 0;
 }
 
-void kaodv_netlink_fini(void)
+void kaodv_netlink_fini_ns(struct netlink_state *state)
 {
-    sock_release(kaodvnl->sk_socket);
-    down(&kaodvnl_sem);
-    up(&kaodvnl_sem);
-
-    netlink_unregister_notifier(&kaodv_nl_notifier);
+    netlink_kernel_release(state->kaodvnl);
 }

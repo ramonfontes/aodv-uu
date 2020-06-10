@@ -25,13 +25,25 @@
 #define KAODV_QUEUE_DROP 1
 #define KAODV_QUEUE_SEND 2
 
-int kaodv_queue_find(__u32 daddr);
-int kaodv_queue_enqueue_packet(struct sk_buff *skb,
+#include <linux/list.h>
+
+struct mod_state;
+
+struct queue_state {
+    unsigned int queue_maxlen;
+    rwlock_t queue_lock;
+    unsigned int queue_total;
+    struct list_head queue_list;
+};
+
+int kaodv_queue_find(struct queue_state *state, __u32 daddr);
+int kaodv_queue_enqueue_packet(struct queue_state *state, struct sk_buff *skb,
                                int (*okfn)(struct net *, struct sock *,
                                            struct sk_buff *));
-int kaodv_queue_set_verdict(int verdict, __u32 daddr);
-void kaodv_queue_flush(void);
-int kaodv_queue_init(void);
-void kaodv_queue_fini(void);
+int kaodv_queue_set_verdict(struct mod_state *mod_state, int verdict,
+                            __u32 daddr);
+void kaodv_queue_flush(struct queue_state *state);
+int kaodv_queue_init_ns(struct queue_state *state);
+void kaodv_queue_fini_ns(struct queue_state *state);
 
 #endif

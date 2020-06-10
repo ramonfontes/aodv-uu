@@ -31,11 +31,13 @@
 #include <linux/sysctl.h>
 #include <linux/version.h>
 #include <net/icmp.h>
+#include <net/netns/generic.h>
 #include <net/route.h>
 #include <net/sock.h>
 
 #include "kaodv-expl.h"
 #include "kaodv-ipenc.h"
+#include "kaodv-mod.h"
 #include "kaodv-netlink.h"
 #include "kaodv-queue.h"
 #include "kaodv.h"
@@ -63,22 +65,18 @@ struct kaodv_queue_entry {
 
 typedef int (*kaodv_queue_cmpfn)(struct kaodv_queue_entry *, unsigned long);
 
-static unsigned int queue_maxlen = KAODV_QUEUE_QMAX_DEFAULT;
-static rwlock_t queue_lock = __RW_LOCK_UNLOCKED();
-static unsigned int queue_total;
-static LIST_HEAD(queue_list);
-
-static inline int __kaodv_queue_enqueue_entry(struct kaodv_queue_entry *entry)
+static inline int __kaodv_queue_enqueue_entry(struct queue_state *queue,
+                                              struct kaodv_queue_entry *entry)
 {
-    if (queue_total >= queue_maxlen) {
+    if (queue->queue_total >= queue->queue_maxlen) {
         if (net_ratelimit())
             printk(KERN_WARNING "kaodv-queue: full at %d entries, "
                                 "dropping packet(s).\n",
-                   queue_total);
+                   queue->queue_total);
         return -ENOSPC;
     }
-    list_add(&entry->list, &queue_list);
-    queue_total++;
+    list_add(&entry->list, &queue->queue_list);
+    queue->queue_total++;
     return 0;
 }
 
@@ -87,11 +85,12 @@ static inline int __kaodv_queue_enqueue_entry(struct kaodv_queue_entry *entry)
  * entry if cmpfn is NULL.
  */
 static inline struct kaodv_queue_entry *
-__kaodv_queue_find_entry(kaodv_queue_cmpfn cmpfn, unsigned long data)
+__kaodv_queue_find_entry(struct queue_state *queue, kaodv_queue_cmpfn cmpfn,
+                         unsigned long data)
 {
     struct list_head *p;
 
-    list_for_each_prev(p, &queue_list)
+    list_for_each_prev(p, &queue->queue_list)
     {
         struct kaodv_queue_entry *entry = (struct kaodv_queue_entry *)p;
 
@@ -102,51 +101,56 @@ __kaodv_queue_find_entry(kaodv_queue_cmpfn cmpfn, unsigned long data)
 }
 
 static inline struct kaodv_queue_entry *
-__kaodv_queue_find_dequeue_entry(kaodv_queue_cmpfn cmpfn, unsigned long data)
+__kaodv_queue_find_dequeue_entry(struct queue_state *queue,
+                                 kaodv_queue_cmpfn cmpfn, unsigned long data)
 {
     struct kaodv_queue_entry *entry;
 
-    entry = __kaodv_queue_find_entry(cmpfn, data);
+    entry = __kaodv_queue_find_entry(queue, cmpfn, data);
     if (entry == NULL)
         return NULL;
 
     list_del(&entry->list);
-    queue_total--;
+    queue->queue_total--;
 
     return entry;
 }
 
-static inline void __kaodv_queue_flush(void)
+static inline void __kaodv_queue_flush(struct queue_state *queue)
 {
     struct kaodv_queue_entry *entry;
 
-    while ((entry = __kaodv_queue_find_dequeue_entry(NULL, 0))) {
+    while ((entry = __kaodv_queue_find_dequeue_entry(queue, NULL, 0))) {
         kfree_skb(entry->skb);
         kfree(entry);
     }
 }
 
-static inline void __kaodv_queue_reset(void) { __kaodv_queue_flush(); }
+static inline void __kaodv_queue_reset(struct queue_state *state)
+{
+    __kaodv_queue_flush(state);
+}
 
 static struct kaodv_queue_entry *
-kaodv_queue_find_dequeue_entry(kaodv_queue_cmpfn cmpfn, unsigned long data)
+kaodv_queue_find_dequeue_entry(struct queue_state *queue,
+                               kaodv_queue_cmpfn cmpfn, unsigned long data)
 {
     struct kaodv_queue_entry *entry;
 
-    write_lock_bh(&queue_lock);
-    entry = __kaodv_queue_find_dequeue_entry(cmpfn, data);
-    write_unlock_bh(&queue_lock);
+    write_lock_bh(&queue->queue_lock);
+    entry = __kaodv_queue_find_dequeue_entry(queue, cmpfn, data);
+    write_unlock_bh(&queue->queue_lock);
     return entry;
 }
 
-void kaodv_queue_flush(void)
+void kaodv_queue_flush(struct queue_state *queue)
 {
-    write_lock_bh(&queue_lock);
-    __kaodv_queue_flush();
-    write_unlock_bh(&queue_lock);
+    write_lock_bh(&queue->queue_lock);
+    __kaodv_queue_flush(queue);
+    write_unlock_bh(&queue->queue_lock);
 }
 
-int kaodv_queue_enqueue_packet(struct sk_buff *skb,
+int kaodv_queue_enqueue_packet(struct queue_state *queue, struct sk_buff *skb,
                                int (*okfn)(struct net *, struct sock *,
                                            struct sk_buff *))
 {
@@ -168,18 +172,18 @@ int kaodv_queue_enqueue_packet(struct sk_buff *skb,
     entry->rt_info.daddr = iph->daddr;
     entry->rt_info.saddr = iph->saddr;
 
-    write_lock_bh(&queue_lock);
+    write_lock_bh(&queue->queue_lock);
 
-    status = __kaodv_queue_enqueue_entry(entry);
+    status = __kaodv_queue_enqueue_entry(queue, entry);
 
     if (status < 0)
         goto err_out_unlock;
 
-    write_unlock_bh(&queue_lock);
+    write_unlock_bh(&queue->queue_lock);
     return status;
 
 err_out_unlock:
-    write_unlock_bh(&queue_lock);
+    write_unlock_bh(&queue->queue_lock);
     kfree(entry);
 
     return status;
@@ -190,21 +194,21 @@ static inline int dest_cmp(struct kaodv_queue_entry *e, unsigned long daddr)
     return (daddr == e->rt_info.daddr);
 }
 
-int kaodv_queue_find(__u32 daddr)
+int kaodv_queue_find(struct queue_state *queue, __u32 daddr)
 {
     struct kaodv_queue_entry *entry;
     int res = 0;
 
-    read_lock_bh(&queue_lock);
-    entry = __kaodv_queue_find_entry(dest_cmp, daddr);
+    read_lock_bh(&queue->queue_lock);
+    entry = __kaodv_queue_find_entry(queue, dest_cmp, daddr);
     if (entry != NULL)
         res = 1;
 
-    read_unlock_bh(&queue_lock);
+    read_unlock_bh(&queue->queue_lock);
     return res;
 }
 
-int kaodv_queue_set_verdict(int verdict, __u32 daddr)
+int kaodv_queue_set_verdict(struct mod_state *mod, int verdict, __u32 daddr)
 {
     struct kaodv_queue_entry *entry;
     int pkts = 0;
@@ -212,7 +216,8 @@ int kaodv_queue_set_verdict(int verdict, __u32 daddr)
     if (verdict == KAODV_QUEUE_DROP) {
 
         while (1) {
-            entry = kaodv_queue_find_dequeue_entry(dest_cmp, daddr);
+            entry = kaodv_queue_find_dequeue_entry(&mod->queue_state, dest_cmp,
+                                                   daddr);
 
             if (entry == NULL)
                 return pkts;
@@ -230,23 +235,24 @@ int kaodv_queue_set_verdict(int verdict, __u32 daddr)
         struct expl_entry e;
 
         while (1) {
-            entry = kaodv_queue_find_dequeue_entry(dest_cmp, daddr);
+            entry = kaodv_queue_find_dequeue_entry(&mod->queue_state, dest_cmp,
+                                                   daddr);
 
             if (entry == NULL)
                 return pkts;
 
-            if (!kaodv_expl_get(daddr, &e)) {
+            if (!kaodv_expl_get(&mod->expl_state, daddr, &e)) {
                 kfree_skb(entry->skb);
                 goto next;
             }
             if (e.flags & KAODV_RT_GW_ENCAP) {
 
-                entry->skb = ip_pkt_encapsulate(entry->skb, e.nhop);
+                entry->skb = ip_pkt_encapsulate(mod->net, entry->skb, e.nhop);
                 if (!entry->skb)
                     goto next;
             }
 
-            ip_route_me_harder(&init_net ,entry->skb, RTN_LOCAL);
+            ip_route_me_harder(mod->net, entry->skb, RTN_LOCAL);
 
             pkts++;
 
@@ -259,56 +265,71 @@ int kaodv_queue_set_verdict(int verdict, __u32 daddr)
     return 0;
 }
 
+/*
+//TODO
 static ssize_t kaodv_queue_get_info(struct file *p_file, char *p_buf,
                                     size_t p_count, loff_t *p_offset)
 {
+    struct queue_state *state = &mod_state->queue_state;
     int len;
 
-    read_lock_bh(&queue_lock);
+    read_lock_bh(&state->queue_lock);
 
     len = sprintf(p_buf,
                   "Queue length      : %u\n"
                   "Queue max. length : %u\n",
-                  queue_total, queue_maxlen);
+                  state->queue_total, state->queue_maxlen);
 
-    read_unlock_bh(&queue_lock);
+    read_unlock_bh(&state->queue_lock);
 
     return len;
-}
+}*/
 
-static const struct file_operations kaodv_proc_fops = {
-    read : kaodv_queue_get_info
-};
+// TODO
+// static const struct file_operations kaodv_proc_fops = {
+//    read : kaodv_queue_get_info
+//};
 
-static int init_or_cleanup(int init)
+static int init_or_cleanup(struct queue_state *state, int init)
 {
     int status = -ENOMEM;
-    struct proc_dir_entry *proc;
+    // struct proc_dir_entry *proc;
 
     if (!init)
         goto cleanup;
 
-    queue_total = 0;
+    /*
+        //TODO
+        proc = proc_create(KAODV_QUEUE_PROC_FS_NAME, 0, state->net->proc_net,
+                           &kaodv_proc_fops);
 
-    proc = proc_create(KAODV_QUEUE_PROC_FS_NAME, 0, init_net.proc_net,
-                       &kaodv_proc_fops);
-
-    if (!proc) {
-        printk(KERN_ERR "kaodv_queue: failed to create proc entry\n");
-        return -1;
-    }
-
+        if (!proc) {
+            printk(KERN_ERR "kaodv_queue: failed to create proc entry\n");
+            return -1;
+        }
+    */
     return 1;
 
 cleanup:
     synchronize_net();
-    kaodv_queue_flush();
+    kaodv_queue_flush(state);
 
-    remove_proc_entry(KAODV_QUEUE_PROC_FS_NAME, init_net.proc_net);
+    // remove_proc_entry(KAODV_QUEUE_PROC_FS_NAME, state->net->proc_net);
 
     return status;
 }
 
-int kaodv_queue_init(void) { return init_or_cleanup(1); }
+int kaodv_queue_init_ns(struct queue_state *state)
+{
+    state->queue_maxlen = KAODV_QUEUE_QMAX_DEFAULT;
+    state->queue_lock = __RW_LOCK_UNLOCKED();
+    state->queue_total = 0;
+    INIT_LIST_HEAD(&state->queue_list);
 
-void kaodv_queue_fini(void) { init_or_cleanup(0); }
+    return init_or_cleanup(state, 1);
+}
+
+void kaodv_queue_fini_ns(struct queue_state *state)
+{
+    init_or_cleanup(state, 0);
+}

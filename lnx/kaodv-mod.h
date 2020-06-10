@@ -7,6 +7,12 @@
 #include <linux/netdevice.h>
 #include <linux/spinlock.h>
 
+#include "kaodv-expl.h"
+#include "kaodv-netlink.h"
+#include "kaodv-queue.h"
+
+extern unsigned int net_id;
+
 /* Interface information */
 struct if_info {
     struct list_head l;
@@ -16,14 +22,25 @@ struct if_info {
     struct net_device *dev;
 };
 
-static LIST_HEAD(ifihead);
-static rwlock_t ifilock = __RW_LOCK_UNLOCKED();
-/* extern struct list_head ifihead; */
-/* extern rwlock_t ifilock; */
+struct mod_state {
+    int qual;
+    unsigned long pkts_dropped;
+    int qual_th;
+    int is_gateway;
+    int active_route_timeout;
+
+    struct list_head ifihead;
+    rwlock_t ifilock;
+
+    struct net *net;
+    struct expl_state expl_state;
+    struct queue_state queue_state;
+    struct netlink_state netlink_state;
+};
 
 #define MIN_IP_ENCAP_SIZE sizeof(struct min_ipenc_hdr)
 
-static inline int if_info_add(struct net_device *dev)
+static inline int if_info_add(struct mod_state *mod, struct net_device *dev)
 {
     struct if_info *ifi;
     struct in_device *indev;
@@ -61,19 +78,19 @@ static inline int if_info_add(struct net_device *dev)
         in_dev_put(indev);
     }
 
-    write_lock(&ifilock);
-    list_add(&ifi->l, &ifihead);
-    write_unlock(&ifilock);
+    write_lock(&mod->ifilock);
+    list_add(&ifi->l, &mod->ifihead);
+    write_unlock(&mod->ifilock);
 
     return 0;
 }
 
-static inline void if_info_purge(void)
+static inline void if_info_purge(struct mod_state *mod)
 {
     struct list_head *pos, *n;
 
-    write_lock(&ifilock);
-    list_for_each_safe(pos, n, &ifihead)
+    write_lock(&mod->ifilock);
+    list_for_each_safe(pos, n, &mod->ifihead)
     {
         struct if_info *ifi = (struct if_info *)pos;
         list_del(&ifi->l);
@@ -83,17 +100,18 @@ static inline void if_info_purge(void)
         dev_put(ifi->dev);
         kfree(ifi);
     }
-    write_unlock(&ifilock);
+    write_unlock(&mod->ifilock);
 }
 
-static inline int if_info_from_ifindex(struct in_addr *ifa, struct in_addr *bc,
+static inline int if_info_from_ifindex(struct mod_state *mod,
+                                       struct in_addr *ifa, struct in_addr *bc,
                                        int ifindex)
 {
     struct list_head *pos;
     int res = -1;
 
-    read_lock(&ifilock);
-    list_for_each(pos, &ifihead)
+    read_lock(&mod->ifilock);
+    list_for_each(pos, &mod->ifihead)
     {
         struct if_info *ifi = (struct if_info *)pos;
         if (ifi->dev->ifindex == ifindex) {
@@ -106,11 +124,12 @@ static inline int if_info_from_ifindex(struct in_addr *ifa, struct in_addr *bc,
             break;
         }
     }
-    read_unlock(&ifilock);
+    read_unlock(&mod->ifilock);
 
     return res;
 }
 
-void kaodv_update_route_timeouts(int hooknum, const struct net_device *dev,
+void kaodv_update_route_timeouts(struct mod_state *mod_state, int hooknum,
+                                 const struct net_device *dev,
                                  struct iphdr *iph);
 #endif
