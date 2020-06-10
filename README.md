@@ -30,10 +30,8 @@ describe your problems.
 ## Requirements
 
 Real world:
-* Linux OS (2.4.x, 2.6.x).
-* Kernel with Netfilter support.
-  Most Red Hat/Fedora kernels have this support.
-* Wireless LAN cards in ad-hoc mode (alternatively a wired setup can
+* Linux based OS (>= 3.6.0).
+* Wireless LAN cards in ad-hoc/mesh mode (alternatively a wired setup can
   be used).
 
 ns-2:
@@ -79,96 +77,6 @@ the kernel):
 
 Module loading should happen automatically if AODV is installed and
 the module loading system (modprobe) is properly configured.
-
-## Installation Debian
-
-Use Debian Lenny (5.0.10) to have Linux kernel 2.6.26 available.
-Install the aodv-uu dependencies:
-
-```
-> apt-get install gcc make
-> apt-get install linux-headers-$(uname -r)
-```
-
-All packages are available on the CD/DVD ISO files.
-Now compile aodv-uu as usual.
-
-## Compiling for ARM (iPAQ, Zaurus)
-
-AODV-UU now easily compiles for the ARM platform, which makes it
-suitable for use on many PDAs, including the Compaq/HP iPAQ and the
-Sharp Zaurus. However, since cross-platform compiling is necessary,
-this process requires some extra steps. This is what I did to get it
-working with the Familiar distribution on a H3800 iPAQ:
-
-1. First download the cross-compiler, for example:
-
-```
-> wget ftp://ftp.handhelds.org/pub/linux/arm/toolchain/arm-linux-toolchain-current.tar.gz
-```
-
-2. Unpack the cross-compiler according to instructions in
-ftp://ftp.handhelds.org/pub/linux/arm/toolchain/README, usually:
-
-```
-> cd /; tar zxvf /path/to/arm-linux-toolchain-current.tar.gz
-```
-
-3. Retrieve the kernel source code matching the kernel used on the ARM
-device.You may check the URL below for binary pre-compiled kernel
-packages, installable via ipkg. There are no guarantees that these are
-always available or up to date...
-
-http://www.docs.uu.se/docs/research/projects/ape/familiar/
-
-Otherwise, for the Familiar distribution, the kernel source code can
-be retrieved via anonymous cvs:
-
-```
-> export CVSROOT=:pserver:anoncvs@cvs.handhelds.org:/cvs
-```
-```
-> cvs login
-Password=anoncvs
-```
-
-Get the matching version with "-r":
-
-```
-> cvs export -r K2-4-18-rmk3-hh6 linux/kernel
-```
-
-4. Re-link the "asm" and "linux" include directories in arm
-cross-compiler tree to point to those in the ARM kernel source tree:
-
-```
-> ln -s /path/to/arm-kernel-source/include/linux /skiff/local/arm-linux/include/linux
-> ln -s /path/to/arm-kernel-source/include/asm /skiff/local/arm-linux/include/asm
-```
-
-5. Make sure the arm compiler is in the PATH and that /usr/src/linux
-points to the ARM kernel source.
-
-```
-> export PATH=$PATH:/skiff/local/arm-linux/bin
-> ln -s /path/to/arm-kernel-source /usr/src/linux
-```
-
-6. Since the default Familiar kernel do not have the proper netfilter
-support for AODV-UU (CONFIG_IP_NF_QUEUE) it is necessary to compile a
-new kernel. Follow the instructions at
-http://www.handhelds.org/handhelds-faq/development.html. Build
-ipkg-packages for easy installation. Then install kernel using ipkg. It
-may be possible to transfer only the ip_queue.o module so that
-installing a new kernel can be avoided.
-
-6. Compile AODV-UU for ARM:
-
-```
-> make arm
-```
-
-To install, copy kaodv.o and aodvd to the ARM device.
 
 ## Debug output
 
@@ -290,22 +198,6 @@ outside the ad hoc prefix.
 
 ## Issues & Troubleshooting
 
-* If you run Fedora Core 1 and the kernel module `kaodv.o` fails to
-compile, install the compatibility gcc compiler (gcc32 rpm). Then try
-compiling with `make KCC=gcc32`.
-
-* If the kernel module compilation fails or the module does not load,
-make sure that the kernel source code is installed and properly
-configured. If you have a kernel config file (.config) matching your
-running kernel, do a `make mrproper` (WARNING: this cleans up the tree
-and removes the .config file. You might want to make a .config backup
-first). Create a .config file (or use an existing one). Make sure that
-the kernel version numbering in the kernel's top-level Makefile
-matches your running kernel (Red Hat/Fedora sometimes add a
-`custom`-string). Do `make oldconfig`.  Dependending on whether you
-have a 2.4 kernel or a 2.6 kernel, do `make dep` or `make prepare-all`
-respectively. Your tree should now be configured.
-
 * If a crash occurs, the kernel module `kaodv.o` may remain loaded and
 can stop traffic from going through on the interface. Unload with
 `/sbin/rmmod kaodv` (root permissions required).
@@ -325,11 +217,6 @@ command:
 ```
 > route add default dev <wireless iface e.g., "eth1">
 ```
-
-## Notes about the source code
-
-libipq.c and libipq.h are unmodified files from the netfilter
-package which are included here for convenience.
 
 ## Contact
 
