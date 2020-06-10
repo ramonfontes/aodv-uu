@@ -1,9 +1,10 @@
-Introduction
-============
+# AODV-UU
+
+## Introduction
 
 This is an AODV implementation developed at Uppsala University,
 Sweden, with some funding from Ericsson AB. It has been developed
-mainly for use in the APE testbed, http://apetestbed.sourceforge.net.
+mainly for use in the [APE testbed](http://apetestbed.sourceforge.net).
 The code is released under the GNU General Public License (GPL). See
 the GPL document for more information.
 
@@ -26,8 +27,7 @@ tested with great results. If you happen to experience less successful
 operation of this implementation, please contact the author(s) and
 describe your problems.
 
-Requirements
-============
+## Requirements
 
 Real world:
 * Linux OS (2.4.x, 2.6.x).
@@ -39,8 +39,7 @@ Real world:
 ns-2:
 * See README.ns
 
-Installation
-============
+## Installation
 
 If you are running AODV-UU in NS-2, then you should read README.ns for
 install instructions.
@@ -50,21 +49,29 @@ kernel you are compiling against installed. Otherwise the kernel
 modules might not compile. See the troubleshooting section if there
 are problems.
 
-Compile with "make":
+Compile with `make`:
 
+```
 > make
+```
 
 Install (as "root"):
 
+```
 > make install
+```
 
 Run (as "root" with recommended options for debugging):
 
+```
 > aodvd -l -r 3
+```
 
 For command line options, run:
 
+```
 > aodvd --help
+```
 
 The following module must be loaded when running (or compiled into
 the kernel):
@@ -73,20 +80,20 @@ the kernel):
 Module loading should happen automatically if AODV is installed and
 the module loading system (modprobe) is properly configured.
 
-Installation Debian
-===================
+## Installation Debian
 
 Use Debian Lenny (5.0.10) to have Linux kernel 2.6.26 available.
 Install the aodv-uu dependencies:
 
+```
 > apt-get install gcc make
 > apt-get install linux-headers-$(uname -r)
+```
 
 All packages are available on the CD/DVD ISO files.
 Now compile aodv-uu as usual.
 
-Compiling for ARM (iPAQ, Zaurus)
-================================
+## Compiling for ARM (iPAQ, Zaurus)
 
 AODV-UU now easily compiles for the ARM platform, which makes it
 suitable for use on many PDAs, including the Compaq/HP iPAQ and the
@@ -96,12 +103,16 @@ working with the Familiar distribution on a H3800 iPAQ:
 
 1. First download the cross-compiler, for example:
 
+```
 > wget ftp://ftp.handhelds.org/pub/linux/arm/toolchain/arm-linux-toolchain-current.tar.gz
+```
 
 2. Unpack the cross-compiler according to instructions in
 ftp://ftp.handhelds.org/pub/linux/arm/toolchain/README, usually:
 
+```
 > cd /; tar zxvf /path/to/arm-linux-toolchain-current.tar.gz
+```
 
 3. Retrieve the kernel source code matching the kernel used on the ARM
 device.You may check the URL below for binary pre-compiled kernel
@@ -113,26 +124,35 @@ http://www.docs.uu.se/docs/research/projects/ape/familiar/
 Otherwise, for the Familiar distribution, the kernel source code can
 be retrieved via anonymous cvs:
 
+```
 > export CVSROOT=:pserver:anoncvs@cvs.handhelds.org:/cvs
-
+```
+```
 > cvs login
 Password=anoncvs
+```
 
 Get the matching version with "-r":
 
+```
 > cvs export -r K2-4-18-rmk3-hh6 linux/kernel
+```
 
 4. Re-link the "asm" and "linux" include directories in arm
 cross-compiler tree to point to those in the ARM kernel source tree:
 
+```
 > ln -s /path/to/arm-kernel-source/include/linux /skiff/local/arm-linux/include/linux
 > ln -s /path/to/arm-kernel-source/include/asm /skiff/local/arm-linux/include/asm
+```
 
 5. Make sure the arm compiler is in the PATH and that /usr/src/linux
 points to the ARM kernel source.
 
+```
 > export PATH=$PATH:/skiff/local/arm-linux/bin
 > ln -s /path/to/arm-kernel-source /usr/src/linux
+```
 
 6. Since the default Familiar kernel do not have the proper netfilter
 support for AODV-UU (CONFIG_IP_NF_QUEUE) it is necessary to compile a
@@ -144,39 +164,41 @@ installing a new kernel can be avoided.
 
 6. Compile AODV-UU for ARM:
 
+```
 > make arm
+```
 
 To install, copy kaodv.o and aodvd to the ARM device.
 
-
-Debug output
-============
+## Debug output
 
 To get debug output, make sure the daemon is compiled with the -DDEBUG
 option set (check Makefile). Debug information is written to
 /var/log/aodvd.log if the AODV is run with the "-l" flag:
 
+```
 > aodvd -l
+```
 
 This is the same output as written to STDOUT if running the daemon in
 the foreground. To get printouts of the AODV internal routing table,
 run AODV with:
 
+```
 > aodvd -r 2.5
+```
 
 where the number is the interval between routing table printing, in seconds.
 The routing table is written to /var/log/aodvd.rtlog.
 
-Note about Local Repair
-=======================
+## Note about Local Repair
 
 As of version 0.6 of AODV-UU, local repair is fully implemented.
 However, please be aware of the fact that local repair does not always
 help performance, it may in fact hurt it. Consider turning local
 repair off if this is not a feature you are interested in.
 
-Note about HELLO messages
-=========================
+## Note about HELLO messages
 
 This implementation rely on HELLO messages. However, it has been
 found, through real world testing, that HELLO messages are not a good
@@ -194,8 +216,7 @@ transmissions.
 * Broadcast transmissions are not guaranteed to be bidirectional,
 unlike unicast transmissions.
 
-Running a test
-==============
+## Running a test
 
 To test the basic functionality of AODV you need at least three
 computers configured to run AODV. The nodes IP-address configuration
@@ -209,13 +230,14 @@ A <-> B <-> C
 
 Run on either A or C:
 
+```
 > ping -R <IP A or C>
+```
 
 to ping the remote computer. The "-R" option will record the route
 taken by ping packets, so that the actual route taken can be seen.
 
-Unidirectional links
-=====================
+## Unidirectional links
 
 This AODV implementation can detect the presence of unidirectional
 links, and avoid them if necessary. It is done by sending a RREP
@@ -225,8 +247,7 @@ a node. This functionality is not part of the AODV draft as of version
 versions. Unidirectional link detection can be enabled with the "-u"
 option. This feature is experimental and may be BROKEN in any release.
 
-Internet gateway support
-========================
+## Internet gateway support
 
 As of v0.8, AODV-UU implements gateway support by tunneling packets to
 gateway configured nodes. This is much more robust than a default
@@ -240,7 +261,7 @@ lie outside the ad hoc network will generate a (proxy) RREP. This RREP
 contains a special extension that automatically sets up a tunnel
 between the source node and the gateway. Gateways currently implement
 "address locality" through a prefix check, thus the ad hoc network
-must share a prefix (e.g., 192.168.0.0/16). Other "locality checks"
+must share a prefix (e.g., `192.168.0.0/16`). Other "locality checks"
 can easily be implemented in locality.c. Tunnels (i.e., routes to
 gateways) are marked with a "G" flag in the routing table, while
 tunnel entries (i.e., Internet destinations) are marked with and "I"
@@ -249,7 +270,9 @@ flag.
 In case the ad hoc network does not use a globally valid prefix (or
 runs Mobile IP or similar), gateways should also have NAT enabled:
 
+```
 > /sbin/iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+```
 
 Change eth0 to the name of the interface connected to the Internet if
 necessary.
@@ -258,38 +281,39 @@ On the ad hoc nodes it is also necessary to add a default route in the
 kernel routing table, pointing to the ad hoc interface. For example, if
 the wireless ad hoc interface is eth1:
 
+```
 > route add default dev eth1
+```
 
 Otherwise, it will not be possible to communicate with destinations
 outside the ad hoc prefix.
 
-Issues & Troubleshooting
-========================
+## Issues & Troubleshooting
 
-* If you run Fedora Core 1 and the kernel module "kaodv.o" fails to
+* If you run Fedora Core 1 and the kernel module `kaodv.o` fails to
 compile, install the compatibility gcc compiler (gcc32 rpm). Then try
-compiling with "make KCC=gcc32".
+compiling with `make KCC=gcc32`.
 
 * If the kernel module compilation fails or the module does not load,
 make sure that the kernel source code is installed and properly
 configured. If you have a kernel config file (.config) matching your
-running kernel, do a "make mrproper" (WARNING: this cleans up the tree
+running kernel, do a `make mrproper` (WARNING: this cleans up the tree
 and removes the .config file. You might want to make a .config backup
 first). Create a .config file (or use an existing one). Make sure that
 the kernel version numbering in the kernel's top-level Makefile
 matches your running kernel (Red Hat/Fedora sometimes add a
-"custom"-string). Do "make oldconfig".  Dependending on whether you
-have a 2.4 kernel or a 2.6 kernel, do "make dep" or "make prepare-all"
+`custom`-string). Do `make oldconfig`.  Dependending on whether you
+have a 2.4 kernel or a 2.6 kernel, do `make dep` or `make prepare-all`
 respectively. Your tree should now be configured.
 
-* If a crash occurs, the kernel module "kaodv.o" may remain loaded and
+* If a crash occurs, the kernel module `kaodv.o` may remain loaded and
 can stop traffic from going through on the interface. Unload with
-"/sbin/rmmod kaodv" (root permissions required).
+`/sbin/rmmod kaodv` (root permissions required).
 
 * If the daemon refuse to start and complains about ipchains, make
-sure that the "ipchains" compatibility kernel module is not loaded.
-It will conflict with iptables. Do "ipchains -F" followed by "modprobe
--r ipchains" to unload it.
+sure that the `ipchains` compatibility kernel module is not loaded.
+It will conflict with iptables. Do `ipchains -F` followed by `modprobe
+-r ipchains` to unload it.
 
 * For routing between nodes with arbitrary subnet addresses the
 default gateway in the kernel routing table must point to the node
@@ -298,16 +322,16 @@ will not be possible, since the kernel will complain that there is no
 route available. Setting this gateway is typically done with the
 command:
 
+```
 > route add default dev <wireless iface e.g., "eth1">
+```
 
-Notes about the source code
-===========================
+## Notes about the source code
 
 libipq.c and libipq.h are unmodified files from the netfilter
 package which are included here for convenience.
 
-Contact:
-========
+## Contact
 
 Source code and implementation questions:
 Erik Nordström <erik.nordstrom@it.uu.se>
