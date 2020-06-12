@@ -47,6 +47,7 @@
 #endif
 
 /* Global variables: */
+int load_unload_kernel_module = 0;
 int log_to_file = 0;
 int rt_log_interval = 0; /* msecs between routing table logging 0=off */
 int unidir_hack = 0;
@@ -78,6 +79,7 @@ struct option longopts[] = {{"interface", required_argument, NULL, 'i'},
                             {"n-hellos", required_argument, NULL, 'n'},
                             {"daemon", no_argument, NULL, 'd'},
                             {"force-gratuitous", no_argument, NULL, 'g'},
+                            {"kaodv", no_argument, NULL, 'g'},
                             {"opt-hellos", no_argument, NULL, 'o'},
                             {"quality-threshold", required_argument, NULL, 'q'},
                             {"log-rt-table", required_argument, NULL, 'r'},
@@ -110,6 +112,7 @@ static void usage(int status)
         "first\n"
         "                        wireless interface.\n"
         "-j, --hello-jitter      Toggle hello jittering (default ON).\n"
+        "-k, --kaodv             Load/unload the kaodv kernel module.\n"
         "-l, --log               Log debug output to %s.\n"
         "-o, --opt-hellos        Send HELLOs only when forwarding data "
         "(experimental).\n"
@@ -206,36 +209,6 @@ static int set_kernel_options()
     return 0;
 }
 
-int find_default_gw(void)
-{
-    FILE *route;
-    char buf[100], *l;
-
-    route = fopen("/proc/net/route", "r");
-
-    if (route == NULL) {
-        perror("open /proc/net/route");
-        exit(-1);
-    }
-
-    while (fgets(buf, sizeof(buf), route)) {
-        l = strtok(buf, " \t");
-        l = strtok(NULL, " \t");
-        if (l != NULL) {
-            if (strcmp("00000000", l) == 0) {
-                l = strtok(NULL, " \t");
-                l = strtok(NULL, " \t");
-                if (strcmp("0003", l) == 0) {
-                    fclose(route);
-                    return 1;
-                }
-            }
-        }
-    }
-    fclose(route);
-    return 0;
-}
-
 /*
  * Returns information on a network interface given its name...
  */
@@ -290,9 +263,7 @@ int attach_callback_func(int fd, callback_func_t func)
 static void load_modules(char *ifname)
 {
     struct stat st;
-    char buf[1024], *l = NULL;
-    int found = 0;
-    FILE *m;
+    char buf[1024];
 
     memset(buf, '\0', 64);
 
@@ -309,6 +280,13 @@ static void load_modules(char *ifname)
     }
 
     usleep(100000);
+}
+
+static void check_modules(void)
+{
+    char buf[1024], *l = NULL;
+    int found = 0;
+    FILE *m;
 
     /* Check result */
     m = fopen("/proc/modules", "r");
@@ -460,7 +438,10 @@ static void host_init(char *ifname)
     close(if_sock);
 
     /* Load kernel modules */
-    load_modules(ifnames);
+    if (load_unload_kernel_module)
+        load_modules(ifnames);
+
+    check_modules();
 
     /* Enable IP forwarding and set other kernel options... */
     if (set_kernel_options() < 0) {
@@ -531,7 +512,7 @@ int main(int argc, char **argv)
     while (1) {
         int opt;
 
-        opt = getopt_long(argc, argv, "i:fjln:dghoq:r:s:uwxDLRV", longopts, 0);
+        opt = getopt_long(argc, argv, "i:fjln:dghkoq:r:s:uwxDLRV", longopts, 0);
 
         if (opt == EOF)
             break;
@@ -587,6 +568,9 @@ int main(int argc, char **argv)
             break;
         case 'x':
             expanding_ring_search = !expanding_ring_search;
+            break;
+        case 'k':
+            load_unload_kernel_module = 1;
             break;
         case 'L':
             local_repair = !local_repair;
@@ -708,5 +692,6 @@ static void cleanup(void)
 #endif
     log_cleanup();
     nl_cleanup();
-    remove_modules();
+    if (load_unload_kernel_module)
+        remove_modules();
 }
