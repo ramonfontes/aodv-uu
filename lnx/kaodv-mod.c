@@ -353,7 +353,7 @@ static int __net_init kaodv_init_ns(struct net *net)
             // release reference to dev
             dev_put(dev);
         } else
-            printk("No device %s available, ignoring!\n", ifname_default[i]);
+            printk("No device %s available, ignoring!\n", ifnames[i]);
     }
 
     // TODO
