@@ -90,7 +90,8 @@ void kaodv_update_route_timeouts(struct mod_state *mod_state, int hooknum,
                                          iph->daddr, dev->ifindex);
 
     /* First update forward route and next hop */
-    if (kaodv_expl_get(expl, iph->daddr, &e)) {
+    if (kaodv_expl_get(expl, iph->daddr, &e))
+    {
 
         kaodv_expl_update(expl, e.daddr, e.nhop,
                           mod_state->ACTIVE_ROUTE_TIMEOUT, e.flags,
@@ -102,7 +103,8 @@ void kaodv_update_route_timeouts(struct mod_state *mod_state, int hooknum,
                               dev->ifindex);
     }
     /* Update reverse route */
-    if (kaodv_expl_get(expl, iph->saddr, &e)) {
+    if (kaodv_expl_get(expl, iph->saddr, &e))
+    {
 
         kaodv_expl_update(expl, e.daddr, e.nhop,
                           mod_state->ACTIVE_ROUTE_TIMEOUT, e.flags,
@@ -142,19 +144,23 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
 
     /* We want AODV control messages to go through directly to the
      * AODV socket.... */
-    if (iph && iph->protocol == IPPROTO_UDP) {
+    if (iph && iph->protocol == IPPROTO_UDP)
+    {
         struct udphdr *udph;
 
         udph = (struct udphdr *)((char *)iph + (iph->ihl << 2));
 
         if (ntohs(udph->dest) == AODV_PORT ||
-            ntohs(udph->source) == AODV_PORT) {
+            ntohs(udph->source) == AODV_PORT)
+        {
 
 #ifdef CONFIG_QUAL_THRESHOLD
             mod_state->qual = (skb)->iwq.qual;
-            if (mod_state->qual_th && hooknum == NF_INET_PRE_ROUTING) {
+            if (mod_state->qual_th && hooknum == NF_INET_PRE_ROUTING)
+            {
 
-                if (mod_state->qual && mod_state->qual < mod_state->qual_th) {
+                if (mod_state->qual && mod_state->qual < mod_state->qual_th)
+                {
                     mod_state->pkts_dropped++;
                     return NF_DROP;
                 }
@@ -181,30 +187,35 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
         return NF_ACCEPT;
 
     /* Check which hook the packet is on... */
-    switch (hooknum) {
+    switch (hooknum)
+    {
     case NF_INET_PRE_ROUTING:
         kaodv_update_route_timeouts(mod_state, hooknum, in, iph);
 
         /* If we are a gateway maybe we need to decapsulate? */
         if (mod_state->is_gateway && iph->protocol == IPPROTO_MIPE &&
-            iph->daddr == ifaddr.s_addr) {
+            iph->daddr == ifaddr.s_addr)
+        {
             ip_pkt_decapsulate(skb);
             iph = SKB_NETWORK_HDR_IPH(skb);
             return NF_ACCEPT;
         }
         /* Ignore packets generated locally or that are for this
          * node. */
-        if (iph->saddr == ifaddr.s_addr || iph->daddr == ifaddr.s_addr) {
+        if (iph->saddr == ifaddr.s_addr || iph->daddr == ifaddr.s_addr)
+        {
             return NF_ACCEPT;
         }
         /* Check for unsolicited data packets */
-        else if (!kaodv_expl_get(expl, iph->daddr, &e)) {
+        else if (!kaodv_expl_get(expl, iph->daddr, &e))
+        {
             kaodv_netlink_send_rerr_msg(netlink, PKT_INBOUND, iph->saddr,
                                         iph->daddr, in->ifindex);
             return NF_DROP;
         }
         /* Check if we should repair the route */
-        else if (e.flags & KAODV_RT_REPAIR) {
+        else if (e.flags & KAODV_RT_REPAIR)
+        {
 
             kaodv_netlink_send_rt_msg(netlink, KAODVM_REPAIR, iph->saddr,
                                       iph->daddr);
@@ -216,8 +227,10 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
         break;
     case NF_INET_LOCAL_OUT:
 
+        printk("kaodv NF_INET_LOCAL_OUT for %s", print_ip(iph->daddr));
         if (!kaodv_expl_get(expl, iph->daddr, &e) ||
-            (e.flags & KAODV_RT_REPAIR)) {
+            (e.flags & KAODV_RT_REPAIR))
+        {
 
             if (!kaodv_queue_find(queue, iph->daddr))
                 kaodv_netlink_send_rt_msg(netlink, KAODVM_ROUTE_REQ, 0,
@@ -226,8 +239,9 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
             kaodv_queue_enqueue_packet(queue, skb, okfn);
 
             return NF_STOLEN;
-
-        } else if (e.flags & KAODV_RT_GW_ENCAP) {
+        }
+        else if (e.flags & KAODV_RT_GW_ENCAP)
+        {
             /* Make sure that also the virtual Internet
              * dest entry is refreshed */
             kaodv_update_route_timeouts(mod_state, hooknum, out, iph);
@@ -249,7 +263,7 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
 /*
  * Called when the module is inserted in the kernel.
  */
-static char *ifnames[MAX_INTERFACES] = {"eth0"};
+static char *ifnames[MAX_INTERFACES] = {"wlan0"};
 static int ifnames_num = 0;
 static int qual_th_default = 0;
 
@@ -341,18 +355,22 @@ static int __net_init kaodv_init_ns(struct net *net)
         goto cleanup_hook1;
 
     /* Prefetch network device info (ip, broadcast address, ifindex). */
-    for (i = 0; i < MAX_INTERFACES; i++) {
+    for (i = 0; i < MAX_INTERFACES; i++)
+    {
         if (!ifnames[i])
             break;
 
+        printk("kaodv device %s available!\n", ifnames[i]);
         dev = dev_get_by_name(net, ifnames[i]);
 
-        if (dev) {
+        if (dev)
+        {
             if_info_add(mod_state, dev);
 
             // release reference to dev
             dev_put(dev);
-        } else
+        }
+        else
             printk("No device %s available, ignoring!\n", ifnames[i]);
     }
 

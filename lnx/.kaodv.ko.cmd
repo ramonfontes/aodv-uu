@@ -1,0 +1,1 @@
+cmd_/home/pi/aodv-uu/lnx/kaodv.ko := ld -r  -EL -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds  --build-id  -o /home/pi/aodv-uu/lnx/kaodv.ko /home/pi/aodv-uu/lnx/kaodv.o /home/pi/aodv-uu/lnx/kaodv.mod.o ;  true

@@ -79,7 +79,8 @@ void kaodv_netlink_send_debug_msg(struct netlink_state *state, char *buf,
 
     skb = kaodv_netlink_build_msg(KAODVM_DEBUG, buf, len);
 
-    if (skb == NULL) {
+    if (skb == NULL)
+    {
         printk("kaodv_netlink: skb=NULL\n");
         return;
     }
@@ -101,7 +102,8 @@ void kaodv_netlink_send_rt_msg(struct netlink_state *state, int type, __u32 src,
 
     skb = kaodv_netlink_build_msg(type, &m, sizeof(struct kaodv_rt_msg));
 
-    if (skb == NULL) {
+    if (skb == NULL)
+    {
         printk("kaodv_netlink: skb=NULL\n");
         return;
     }
@@ -126,7 +128,8 @@ void kaodv_netlink_send_rt_update_msg(struct netlink_state *state, int type,
     skb = kaodv_netlink_build_msg(KAODVM_ROUTE_UPDATE, &m,
                                   sizeof(struct kaodv_rt_msg));
 
-    if (skb == NULL) {
+    if (skb == NULL)
+    {
         printk("kaodv_netlink: skb=NULL\n");
         return;
     }
@@ -150,7 +153,8 @@ void kaodv_netlink_send_rerr_msg(struct netlink_state *state, int type,
     skb = kaodv_netlink_build_msg(KAODVM_SEND_RERR, &m,
                                   sizeof(struct kaodv_rt_msg));
 
-    if (skb == NULL) {
+    if (skb == NULL)
+    {
         printk("kaodv_netlink: skb=NULL\n");
         return;
     }
@@ -174,7 +178,8 @@ static int kaodv_netlink_receive_peer(struct mod_state *mod_state,
 
     KAODV_DEBUG(netlink, "Received msg: %s", kaodv_msg_type_to_str(type));
 
-    switch (type) {
+    switch (type)
+    {
     case KAODVM_ADDROUTE:
         if (len < sizeof(struct kaodv_rt_msg))
             return -EINVAL;
@@ -183,10 +188,13 @@ static int kaodv_netlink_receive_peer(struct mod_state *mod_state,
 
         ret = kaodv_expl_get(expl, m->dst, &e);
 
-        if (ret < 0) {
+        if (ret < 0)
+        {
             ret = kaodv_expl_update(expl, m->dst, m->nhop, m->time,
                                     m->flags, m->ifindex);
-        } else {
+        }
+        else
+        {
             ret = kaodv_expl_add(expl, m->dst, m->nhop, m->time, m->flags,
                                  m->ifindex);
         }
@@ -235,12 +243,15 @@ static int kaodv_netlink_rcv_nl_event(struct notifier_block *this,
 
     // access namespace state
     mod = net_generic(n->net, net_id);
+    printk("kaodv: net_id %d", net_id);
     expl = &mod->expl_state;
     queue = &mod->queue_state;
     netlink = &mod->netlink_state;
 
-    if (event == NETLINK_URELEASE && n->protocol == NETLINK_AODV && n->portid) {
-        if (n->portid == netlink->peer_pid) {
+    if (event == NETLINK_URELEASE && n->protocol == NETLINK_AODV && n->portid)
+    {
+        if (n->portid == netlink->peer_pid)
+        {
             netlink->peer_pid = 0;
             kaodv_expl_flush(expl);
             kaodv_queue_flush(queue);
@@ -254,10 +265,11 @@ static struct notifier_block kaodv_nl_notifier = {
     .notifier_call = kaodv_netlink_rcv_nl_event,
 };
 
-#define RCV_SKB_FAIL(err)                                                      \
-    do {                                                                       \
-        netlink_ack(skb, nlh, (err), NULL);                                    \
-        return;                                                                \
+#define RCV_SKB_FAIL(err)                   \
+    do                                      \
+    {                                       \
+        netlink_ack(skb, nlh, (err), NULL); \
+        return;                             \
     } while (0)
 
 static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
@@ -269,7 +281,8 @@ static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
     struct nlmsghdr *nlh;
 
     skblen = skb->len;
-    if (skblen < sizeof(struct nlmsghdr)) {
+    if (skblen < sizeof(struct nlmsghdr))
+    {
         printk("skblen to small\n");
         return;
     }
@@ -277,7 +290,8 @@ static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
     nlh = (struct nlmsghdr *)skb->data;
     nlmsglen = nlh->nlmsg_len;
 
-    if (nlmsglen < sizeof(struct nlmsghdr) || skblen < nlmsglen) {
+    if (nlmsglen < sizeof(struct nlmsghdr) || skblen < nlmsglen)
+    {
         printk("nlsmsg=%d skblen=%d to small\n", nlmsglen, skblen);
         return;
     }
@@ -303,12 +317,15 @@ static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
     mod = net_generic(sock_net(skb->sk), net_id);
     netlink = &mod->netlink_state;
 
-    if (netlink->peer_pid) {
-        if (netlink->peer_pid != pid) {
+    if (netlink->peer_pid)
+    {
+        if (netlink->peer_pid != pid)
+        {
             // write_unlock_bh(&queue_lock);
             RCV_SKB_FAIL(-EBUSY);
         }
-    } else
+    }
+    else
         netlink->peer_pid = pid;
 
     // write_unlock_bh(&queue_lock);
@@ -342,7 +359,8 @@ int kaodv_netlink_init_ns(struct netlink_state *state, struct net *net)
 {
     state->kaodvnl = netlink_kernel_create(net, NETLINK_AODV, &kaodvnlcfg);
 
-    if (state->kaodvnl == NULL) {
+    if (state->kaodvnl == NULL)
+    {
         printk(KERN_ERR "kaodv_netlink: failed to create netlink socket\n");
         return -1;
     }
