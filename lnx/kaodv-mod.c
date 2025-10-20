@@ -251,7 +251,7 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
             if (!skb)
                 return NF_STOLEN;
 
-            ip_route_me_harder(net, skb, RTN_LOCAL);
+            ip_route_me_harder(dev_net(skb_dst(skb)->dev), NULL, skb, RTN_LOCAL);
         }
         break;
     case NF_INET_POST_ROUTING:

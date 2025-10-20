@@ -341,8 +341,7 @@ static inline void kaodv_netlink_rcv_skb(struct sk_buff *skb)
 
 static struct netlink_kernel_cfg kaodvnlcfg = {
     groups : AODVGRP_MAX,
-    input : kaodv_netlink_rcv_skb,
-    cb_mutex : NULL,
+    input : kaodv_netlink_rcv_skb
 };
 
 int kaodv_netlink_init(void)

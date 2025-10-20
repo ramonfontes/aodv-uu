@@ -1,1 +1,1 @@
-cmd_/home/pi/aodv-uu/lnx/kaodv.ko := ld -r  -EL -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds  --build-id  -o /home/pi/aodv-uu/lnx/kaodv.ko /home/pi/aodv-uu/lnx/kaodv.o /home/pi/aodv-uu/lnx/kaodv.mod.o ;  true
+savedcmd_/home/gama/external/git/aodv/aodv-uu/lnx/kaodv.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/gama/external/git/aodv/aodv-uu/lnx/kaodv.ko /home/gama/external/git/aodv/aodv-uu/lnx/kaodv.o /home/gama/external/git/aodv/aodv-uu/lnx/kaodv.mod.o

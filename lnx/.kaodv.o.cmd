@@ -1,1 +1,1 @@
-cmd_/home/pi/aodv-uu/lnx/kaodv.o := ld  -EL    -r -o /home/pi/aodv-uu/lnx/kaodv.o /home/pi/aodv-uu/lnx/kaodv-mod.o /home/pi/aodv-uu/lnx/kaodv-debug.o /home/pi/aodv-uu/lnx/kaodv-netlink.o /home/pi/aodv-uu/lnx/kaodv-queue.o /home/pi/aodv-uu/lnx/kaodv-ipenc.o /home/pi/aodv-uu/lnx/kaodv-expl.o 
+savedcmd_/home/gama/external/git/aodv/aodv-uu/lnx/kaodv.o := ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments   -r -o /home/gama/external/git/aodv/aodv-uu/lnx/kaodv.o @/home/gama/external/git/aodv/aodv-uu/lnx/kaodv.mod 

@@ -1,1 +1,1 @@
-savedcmd_/home/gama/external/git/aodv-uu/lnx/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/gama/external/git/aodv-uu/lnx/Module.symvers -T /home/gama/external/git/aodv-uu/lnx/modules.order -i Module.symvers -e 
+savedcmd_/home/gama/external/git/aodv/aodv-uu/lnx/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/gama/external/git/aodv/aodv-uu/lnx/Module.symvers -T /home/gama/external/git/aodv/aodv-uu/lnx/modules.order -i Module.symvers -e 

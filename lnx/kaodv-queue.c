@@ -252,7 +252,7 @@ int kaodv_queue_set_verdict(struct mod_state *mod, int verdict, __u32 daddr)
                     goto next;
             }
 
-            ip_route_me_harder(mod->net, entry->skb, RTN_LOCAL);
+            ip_route_me_harder(mod->net, NULL, entry->skb, RTN_LOCAL);
 
             pkts++;
 
