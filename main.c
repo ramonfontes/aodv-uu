@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Author: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *
  *****************************************************************************/
 #include <stdio.h>
@@ -51,6 +51,7 @@ unsigned dev_indices[MAX_NR_INTERFACES] = {0};
 struct host_info this_host;
 struct timeval rreq_ratel[RREQ_RATELIMIT - 1];
 struct timeval rerr_ratel[RERR_RATELIMIT - 1];
+int load_unload_kernel_module = 0;
 int num_rreq = 0;
 int num_rerr = 0;
 int log_to_file = 0;
@@ -128,7 +129,7 @@ void usage(int status)
 	 "-R, --rate-limit        Toggle rate limiting of RREQs and RERRs (default ON).\n"
 	 "-q, --quality-threshold Set a minimum signal quality threshold for control packets.\n"
 	 "-V, --version           Show version.\n\n"
-	 "Erik Nordström, <erik.nordstrom@it.uu.se>\n\n",
+	 "Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>\n\n",
 	 progname, AODV_LOG_PATH, AODV_RT_LOG_PATH);
 
     exit(status);
@@ -283,6 +284,61 @@ int attach_callback_func(int fd, callback_func_t func)
     return 0;
 }
 
+/* Here we find out how to load the kernel modules... If the modules
+   are located in the current directory. use those. Otherwise fall
+   back to modprobe. */
+
+static void load_modules(char *ifname)
+{
+    struct stat st;
+    char buf[1024];
+
+    memset(buf, '\0', 64);
+
+    if (stat("./kaodv.ko", &st) == 0)
+        sprintf(buf, "/sbin/insmod kaodv.ko ifname=%s &>/dev/null", ifname);
+    else if (stat("./kaodv.o", &st) == 0)
+        sprintf(buf, "/sbin/insmod kaodv.o ifname=%s &>/dev/null", ifname);
+    else
+        sprintf(buf, "/sbin/modprobe kaodv ifname=%s &>/dev/null", ifname);
+
+    if (system(buf) == -1) {
+        fprintf(stderr, "Could not load kaodv module\n");
+        exit(-1);
+    }
+
+    usleep(100000);
+}
+
+static void check_modules(void)
+{
+    char buf[1024], *l = NULL;
+    int found = 0;
+    FILE *m;
+
+    /* Check result */
+    m = fopen("/proc/modules", "r");
+    while (fgets(buf, sizeof(buf), m)) {
+        l = strtok(buf, " \t");
+        if (!strcmp(l, "kaodv"))
+            found++;
+        if (!strcmp(l, "ipchains")) {
+            fprintf(stderr, "The ipchains kernel module is loaded and prevents "
+                            "AODV-UU from functioning properly.\n");
+            exit(-1);
+        }
+    }
+    fclose(m);
+
+    if (found < 1) {
+        fprintf(stderr,
+                "A kernel module could not be loaded, check your "
+                "installation... %d\n",
+                found);
+        exit(-1);
+    }
+}
+
 void host_init(char *ifname)
 {
     struct sockaddr_in *ina;
@@ -398,6 +454,12 @@ void host_init(char *ifname)
 
     close(if_sock);
 
+	 /* Load kernel modules */
+    if (load_unload_kernel_module)
+        load_modules(ifnames);
+
+    check_modules();
+
     /* Enable IP forwarding and set other kernel options... */
     if (set_kernel_options() < 0) {
 	fprintf(stderr, "Could not set kernel options!\n");
@@ -418,6 +480,17 @@ void signal_handler(int type)
     case SIGTERM:
     default:
 	exit(0);
+    }
+}
+
+static void remove_modules(void)
+{
+    int ret;
+
+    ret = system("/sbin/rmmod kaodv &>/dev/null");
+
+    if (ret != 0) {
+        fprintf(stderr, "Could not remove kernel module kaodv\n");
     }
 }
 
@@ -467,7 +540,7 @@ int main(int argc, char **argv)
     while (1) {
 	int opt;
 
-	opt = getopt_long(argc, argv, "i:fjln:dghoq:r:s:uwxDLRV", longopts, 0);
+	opt = getopt_long(argc, argv, "i:fjln:dghkoq:r:s:uwxDLRV", longopts, 0);
 
 	if (opt == EOF)
 	    break;
@@ -524,6 +597,9 @@ int main(int argc, char **argv)
 	case 'x':
 	    expanding_ring_search = !expanding_ring_search;
 	    break;
+	case 'k':
+		load_unload_kernel_module = 1;
+		break;
 	case 'L':
 	    local_repair = !local_repair;
 	    break;
@@ -535,7 +611,7 @@ int main(int argc, char **argv)
 	    break;
 	case 'V':
 	    printf
-		("\nAODV-UU v%s, %s © Uppsala University & Ericsson AB.\nAuthor: Erik Nordström, <erik.nordstrom@it.uu.se>\n\n",
+		("\nAODV-UU v%s, %s ï¿½ Uppsala University & Ericsson AB.\nAuthor: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>\n\n",
 		 AODV_UU_VERSION, DRAFT_VERSION);
 	    exit(0);
 	    break;

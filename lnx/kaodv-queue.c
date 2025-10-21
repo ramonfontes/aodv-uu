@@ -208,6 +208,20 @@ int kaodv_queue_find(struct queue_state *queue, __u32 daddr)
     return res;
 }
 
+static inline void kaodv_reinject(struct net *net, struct kaodv_queue_entry *entry)
+{
+    struct sk_buff *skb = entry->skb;
+
+    if (!skb) {
+        printk(KERN_ERR "kaodv_reinject: skb NULL\n");
+        return;
+    }
+
+    /* Reencaminha o pacote pela pilha IP novamente */
+    if (ip_local_out(net, skb->sk, skb) != NET_XMIT_SUCCESS)
+        printk(KERN_ERR "kaodv_reinject: ip_local_out falhou\n");
+}
+
 int kaodv_queue_set_verdict(struct mod_state *mod, int verdict, __u32 daddr)
 {
     struct kaodv_queue_entry *entry;
@@ -251,13 +265,15 @@ int kaodv_queue_set_verdict(struct mod_state *mod, int verdict, __u32 daddr)
                 if (!entry->skb)
                     goto next;
             }
-
+        
             ip_route_me_harder(mod->net, NULL, entry->skb, RTN_LOCAL);
-
+        
             pkts++;
 
             /* Inject packet */
-            entry->okfn(NULL, NULL, entry->skb);
+            //entry->okfn(NULL, NULL, entry->skb);
+            kaodv_reinject(mod->net, entry);
+        
         next:
             kfree(entry);
         }

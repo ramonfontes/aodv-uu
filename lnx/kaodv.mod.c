@@ -75,8 +75,6 @@ __used __section("__versions") =
 	"__fentry__\0\0"
 	"\x20\x00\x00\x00\xc8\xf5\x23\xb4"
 	"register_pernet_subsys\0\0"
-	"\x24\x00\x00\x00\x97\x70\x48\x65"
-	"__x86_indirect_thunk_rax\0\0\0\0"
 	"\x10\x00\x00\x00\x7e\x3a\x2c\x12"
 	"_printk\0"
 	"\x1c\x00\x00\x00\xcb\xf6\xfd\xf0"
@@ -113,6 +111,8 @@ __used __section("__versions") =
 	"_raw_write_unlock\0\0\0"
 	"\x24\x00\x00\x00\x80\xd5\xd1\xbb"
 	"unregister_pernet_subsys\0\0\0\0"
+	"\x1c\x00\x00\x00\xa6\xc5\x2f\x6d"
+	"net_namespace_list\0\0"
 	"\x18\x00\x00\x00\x5a\x4c\x9a\xb7"
 	"param_ops_charp\0"
 	"\x1c\x00\x00\x00\xca\x39\x82\x5b"
@@ -143,6 +143,8 @@ __used __section("__versions") =
 	"_raw_read_lock\0\0"
 	"\x14\x00\x00\x00\xed\xfb\xa4\xc7"
 	"rtnl_lock\0\0\0"
+	"\x18\x00\x00\x00\x59\x59\x24\xaf"
+	"ip_local_out\0\0\0\0"
 	"\x24\x00\x00\x00\xb2\x9b\x59\xfa"
 	"netlink_register_notifier\0\0\0"
 	"\x18\x00\x00\x00\x74\xdc\x23\xae"
@@ -158,4 +160,4 @@ __used __section("__versions") =
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "D73E3FA98B302AA19FA9D85");
+MODULE_INFO(srcversion, "FC69B91B27B586A3A726B57");

@@ -260,6 +260,21 @@ static unsigned int kaodv_hook(void *priv, struct sk_buff *skb,
     return NF_ACCEPT;
 }
 
+
+static struct net_device *find_dev_any_ns(const char *ifname)
+{
+    struct net *net_iter;
+    struct net_device *dev = NULL;
+
+    for_each_net(net_iter) {
+        dev = dev_get_by_name(net_iter, ifname);
+        if (dev)
+            return dev;  // referência já incrementada
+    }
+
+    return NULL;
+}
+
 /*
  * Called when the module is inserted in the kernel.
  */
@@ -361,7 +376,8 @@ static int __net_init kaodv_init_ns(struct net *net)
             break;
 
         printk("kaodv device %s available!\n", ifnames[i]);
-        dev = dev_get_by_name(net, ifnames[i]);
+        //dev = dev_get_by_name(net, ifnames[i]);
+        dev = find_dev_any_ns(ifnames[i]);
 
         if (dev)
         {

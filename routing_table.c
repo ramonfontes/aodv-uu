@@ -87,8 +87,6 @@ rt_table_t *NS_CLASS rt_table_insert(struct in_addr dest_addr,
 	unsigned int index;
 	list_t *pos;
 	rt_table_t *rt;
-	struct in_addr nm;
-	nm.s_addr = 0;
 
 	/* Calculate hash key */
 	index = hashing(&dest_addr, &hash);
@@ -183,8 +181,6 @@ rt_table_t *NS_CLASS rt_table_update(rt_table_t * rt, struct in_addr next,
 				     u_int32_t lifetime, u_int8_t state,
 				     u_int16_t flags)
 {
-	struct in_addr nm;
-	nm.s_addr = 0;
 
 	if (rt->state == INVALID && state == VALID) {
 
