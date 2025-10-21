@@ -16,14 +16,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include <netinet/in.h>
 #include "aodv_rerr.h"
 #include "routing_table.h"
@@ -33,7 +30,6 @@
 #include "debug.h"
 #include "params.h"
 
-#endif
 
 RERR *NS_CLASS rerr_create(u_int8_t flags, struct in_addr dest_addr,
 			   u_int32_t dest_seqno)
@@ -118,9 +114,6 @@ void NS_CLASS rerr_process(RERR * rerr, int rerrlen, struct in_addr ip_src,
 	    DEBUG(LOG_DEBUG, 0, "removing rte %s - WAS IN RERR!!",
 		  ip_to_str(udest_addr));
 
-#ifdef NS_PORT
-	    interfaceQueue((nsaddr_t) udest_addr.s_addr, IFQ_DROP_BY_DEST);
-#endif
 	    /* Invalidate route: */
 	    if (!rerr->n) {
 		rt_table_invalidate(rt);

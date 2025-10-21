@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Author: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *
  *****************************************************************************/
 #include "defs.h"
@@ -74,13 +74,10 @@ void llf_init()
     }
 }
 
-
 void llf_cleanup()
 {
     close(rth.fd);
 }
-
-
 
 static inline int llf_rtnl_open(struct rtnl_handle *rth, unsigned subscriptions)
 {
@@ -277,7 +274,6 @@ static inline int llf_print_event(struct iw_event *event,
 	    DEBUG(LOG_DEBUG, 0, "failed mac_to_ip");
 	    return 0;
 	}
-	//printf("IP=%s\n", ip_to_str(ip));
 
 	rt = rt_table_find(ip);
 

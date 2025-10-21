@@ -16,14 +16,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include <netinet/in.h>
 
 #include "aodv_rreq.h"
@@ -38,12 +35,10 @@
 #include "debug.h"
 
 #include "locality.h"
-#endif
 
 /* Comment this to remove packet field output: */
 #define DEBUG_OUTPUT
 
-#ifndef NS_PORT
 static LIST(rreq_records);
 static LIST(rreq_blacklist);
 
@@ -56,7 +51,7 @@ struct blacklist *rreq_blacklist_find(struct in_addr dest_addr);
 
 extern int rreq_gratuitous, expanding_ring_search;
 extern int internet_gw_mode;
-#endif
+
 
 RREQ *NS_CLASS rreq_create(u_int8_t flags, struct in_addr dest_addr,
 			   u_int32_t dest_seqno, struct in_addr orig_addr)
@@ -128,10 +123,10 @@ void NS_CLASS rreq_send(struct in_addr dest_addr, u_int32_t dest_seqno,
 
     /* Broadcast on all interfaces */
     for (i = 0; i < MAX_NR_INTERFACES; i++) {
-	if (!DEV_NR(i).enabled)
-	    continue;
-	rreq = rreq_create(flags, dest_addr, dest_seqno, DEV_NR(i).ipaddr);
-	aodv_socket_send((AODV_msg *) rreq, dest, RREQ_SIZE, ttl, &DEV_NR(i));
+		if (!DEV_NR(i).enabled)
+			continue;
+		rreq = rreq_create(flags, dest_addr, dest_seqno, DEV_NR(i).ipaddr);
+		aodv_socket_send((AODV_msg *) rreq, dest, RREQ_SIZE, ttl, &DEV_NR(i));
     }
 }
 
@@ -450,9 +445,6 @@ void NS_CLASS rreq_route_discovery(struct in_addr dest_addr, u_int8_t flags,
 	    ttl = rt->hcnt + TTL_INCREMENT;
 	}
 
-/* 	if (rt->flags & RT_INET_DEST) */
-/* 	    flags |= RREQ_DEST_ONLY; */
-
 	/* A routing table entry waiting for a RREP should not be expunged
 	   before 2 * NET_TRAVERSAL_TIME... */
 	if (timeval_diff(&rt->rt_timer.timeout, &now) <
@@ -467,9 +459,9 @@ void NS_CLASS rreq_route_discovery(struct in_addr dest_addr, u_int8_t flags,
 
     /* Set a timer for this RREQ */
     if (expanding_ring_search)
-	timer_set_timeout(&seek_entry->seek_timer, RING_TRAVERSAL_TIME);
+		timer_set_timeout(&seek_entry->seek_timer, RING_TRAVERSAL_TIME);
     else
-	timer_set_timeout(&seek_entry->seek_timer, NET_TRAVERSAL_TIME);
+		timer_set_timeout(&seek_entry->seek_timer, NET_TRAVERSAL_TIME);
 
     DEBUG(LOG_DEBUG, 0, "Seeking %s ttl=%d", ip_to_str(dest_addr), ttl);
 

@@ -16,16 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
 
 #include <time.h>
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include "defs.h"
 #include "aodv_timeout.h"
 #include "aodv_socket.h"
@@ -42,8 +39,6 @@
 
 extern int expanding_ring_search, local_repair;
 void route_delete_timeout(void *arg);
-
-#endif
 
 /* These are timeout functions which are called when timers expire... */
 
@@ -104,11 +99,8 @@ void NS_CLASS route_discovery_timeout(void *arg)
 
 		DEBUG(LOG_DEBUG, 0, "NO ROUTE FOUND!");
 
-#ifdef NS_PORT
-		packet_queue_set_verdict(seek_entry->dest_addr, PQ_DROP);
-#else
 		nl_send_no_route_found_msg(seek_entry->dest_addr);
-#endif
+
 		repair_rt = rt_table_find(seek_entry->dest_addr);
 
 		seek_list_remove(seek_entry);
@@ -139,9 +131,8 @@ void NS_CLASS local_repair_timeout(void *arg)
 	/* Unset the REPAIR flag */
 	rt->flags &= ~RT_REPAIR;
 
-#ifndef NS_PORT
 	nl_send_del_route_msg(rt->dest_addr, rt->next_hop, rt->hcnt);
-#endif
+
 	/* Route should already be invalidated. */
 
 	if (rt->nprec) {
@@ -247,11 +238,7 @@ void NS_CLASS hello_timeout(void *arg)
 			rt->flags |= RT_REPAIR;
 			DEBUG(LOG_DEBUG, 0, "Marking %s for REPAIR",
 			      ip_to_str(rt->dest_addr));
-#ifdef NS_PORT
-			/* Buffer pending packets from interface queue */
-			interfaceQueue((nsaddr_t) rt->dest_addr.s_addr,
-				       IFQ_BUFFER);
-#endif
+
 		}
 		neighbor_link_break(rt);
 	}
@@ -281,11 +268,3 @@ void NS_CLASS wait_on_reboot_timeout(void *arg)
 
 	DEBUG(LOG_DEBUG, 0, "Wait on reboot over!!");
 }
-
-#ifdef NS_PORT
-void NS_CLASS packet_queue_timeout(void *arg)
-{
-	packet_queue_garbage_collect();
-	timer_set_timeout(&PQ.garbage_collect_timer, GARBAGE_COLLECT_TIME);
-}
-#endif

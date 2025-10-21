@@ -112,7 +112,6 @@ clean:
 #cd docs && $(MAKE) clean
 
 # DO NOT DELETE
-
 main.o: defs.h timer_queue.h list.h debug.h params.h aodv_socket.h
 main.o: aodv_rerr.h routing_table.h aodv_timeout.h aodv_hello.h aodv_rrep.h
 main.o: nl.h

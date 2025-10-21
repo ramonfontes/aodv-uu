@@ -1,3 +1,4 @@
+
 EXTRA_CFLAGS += $(XDEFS)
 obj-m += kaodv.o
 kaodv-objs := kaodv-mod.o kaodv-debug.o kaodv-netlink.o kaodv-queue.o kaodv-ipenc.o kaodv-expl.o
@@ -11,8 +12,8 @@ all:
 	cp kaodv.ko ../
 
 clean:
-	rm -rf *.o *~ *.ko
 	$(MAKE) -C $(KERNEL_DIR) M=$(shell pwd) clean
+	rm -rf *.o *~
 
 TAGS:
 	etags *.c *.h

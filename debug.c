@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
@@ -29,9 +29,6 @@
 #include <string.h>
 #include <time.h>
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include <net/if.h>
 #include "aodv_rreq.h"
 #include "aodv_rrep.h"
@@ -41,9 +38,7 @@
 #include "params.h"
 #include "timer_queue.h"
 #include "routing_table.h"
-#endif
 
-#ifndef NS_PORT
 extern int log_to_file, rt_log_interval;
 extern char *progname;
 int log_file_fd = -1;
@@ -51,26 +46,9 @@ int log_rt_fd = -1;
 int log_nmsgs = 0;
 int debug = 0;
 struct timer rt_log_timer;
-#endif
 
 void NS_CLASS log_init()
 {
-
-/* NS_PORT: Log filename is prefix + IP address + suffix */
-#ifdef NS_PORT
-
-    char AODV_LOG_PATH[strlen(AODV_LOG_PATH_PREFIX) +
-		       strlen(AODV_LOG_PATH_SUFFIX) + 16];
-    char AODV_RT_LOG_PATH[strlen(AODV_LOG_PATH_PREFIX) +
-			  strlen(AODV_RT_LOG_PATH_SUFFIX) + 16];
-
-
-    sprintf(AODV_LOG_PATH, "%s%d%s", AODV_LOG_PATH_PREFIX, node_id,
-	    AODV_LOG_PATH_SUFFIX);
-    sprintf(AODV_RT_LOG_PATH, "%s%d%s", AODV_LOG_PATH_PREFIX, node_id,
-	    AODV_RT_LOG_PATH_SUFFIX);
-
-#endif				/* NS_PORT */
 
     if (log_to_file) {
 	if ((log_file_fd =
@@ -147,14 +125,6 @@ void NS_CLASS alog(int type, int errnum, const char *function, char *format,
     struct tm *time;
     int len = 0;
 
-/* NS_PORT: Include IP address in log */
-#ifdef NS_PORT
-    if (DEV_NR(NS_DEV_NR).enabled == 1) {
-	len += sprintf(log_buf + len, "%s: ",
-		       ip_to_str(DEV_NR(NS_DEV_NR).ipaddr));
-    }
-#endif				/* NS_PORT */
-
     va_start(ap, format);
 
     if (type == LOG_WARNING)
@@ -170,14 +140,7 @@ void NS_CLASS alog(int type, int errnum, const char *function, char *format,
 
     gettimeofday(&now, NULL);
 
-#ifdef NS_PORT
-    time = gmtime(&now.tv_sec);
-#else
     time = localtime(&now.tv_sec);
-#endif
-
-    /*   if (type <= LOG_NOTICE) */
-/* 	len += sprintf(log_buf + len, "%s: ", progname); */
 
     len += sprintf(log_buf + len, "%02d:%02d:%02d.%03ld %s: %s", time->tm_hour,
 		   time->tm_min, time->tm_sec, now.tv_usec / 1000, function,
@@ -353,11 +316,7 @@ void NS_CLASS print_rt_table(void *arg)
 
     gettimeofday(&now, NULL);
 
-#ifdef NS_PORT
-    time = gmtime(&now.tv_sec);
-#else
     time = localtime(&now.tv_sec);
-#endif
 
     len +=
 	sprintf(rt_buf,

@@ -16,13 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *
  *****************************************************************************/
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include "aodv_neighbor.h"
 #include "aodv_rerr.h"
 #include "aodv_hello.h"
@@ -33,7 +30,6 @@
 #include "debug.h"
 
 extern int llfeedback;
-#endif				/* NS_PORT */
 
 
 /* Add/Update neighbor from a non HELLO AODV control message... */
@@ -65,7 +61,7 @@ void NS_CLASS neighbor_add(AODV_msg * aodv_msg, struct in_addr source,
     }
 
     if (!llfeedback && rt->hello_timer.used)
-	hello_update_timeout(rt, &now, ALLOWED_HELLO_LOSS * HELLO_INTERVAL);
+		hello_update_timeout(rt, &now, ALLOWED_HELLO_LOSS * HELLO_INTERVAL);
 
     return;
 }
@@ -85,9 +81,9 @@ void NS_CLASS neighbor_link_break(rt_table_t * rt)
 	return;
 
     if (rt->hcnt != 1) {
-	DEBUG(LOG_DEBUG, 0, "%s is not a neighbor, hcnt=%d!!!",
-	      ip_to_str(rt->dest_addr), rt->hcnt);
-	return;
+		DEBUG(LOG_DEBUG, 0, "%s is not a neighbor, hcnt=%d!!!",
+			ip_to_str(rt->dest_addr), rt->hcnt);
+		return;
     }
 
     DEBUG(LOG_DEBUG, 0, "Link %s down!", ip_to_str(rt->dest_addr));

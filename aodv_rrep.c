@@ -21,9 +21,6 @@
  *
  *****************************************************************************/
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include <netinet/in.h>
 #include "aodv_rrep.h"
 #include "aodv_neighbor.h"
@@ -38,7 +35,6 @@
 
 extern int unidir_hack, optimized_hellos, llfeedback;
 
-#endif
 
 RREP *NS_CLASS rrep_create(u_int8_t flags,
 			   u_int8_t prefix,

@@ -158,7 +158,6 @@ void nl_cleanup(void)
 	close(rtnl.sock);
 }
 
-
 static void nl_kaodv_callback(int sock)
 {
 	int len;
@@ -172,9 +171,7 @@ static void nl_kaodv_callback(int sock)
 
 	addrlen = sizeof(struct sockaddr_nl);
 
-
-	len =
-	    recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &peer, &addrlen);
+	len = recvfrom(sock, buf, BUFLEN, 0, (struct sockaddr *) &peer, &addrlen);
 
 	if (len <= 0)
 		return;
@@ -238,7 +235,6 @@ static void nl_kaodv_callback(int sock)
 	case KAODVM_ROUTE_UPDATE:
 		m = NLMSG_DATA(nlm);
 
-		
 		dest_addr.s_addr = m->dst;
 		src_addr.s_addr = m->src;
 

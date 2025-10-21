@@ -16,15 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *
  *****************************************************************************/
 
 #include <sys/types.h>
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <net/if.h>
@@ -40,9 +37,6 @@
 #include "debug.h"
 #include "defs.h"
 
-#endif				/* NS_PORT */
-
-#ifndef NS_PORT
 #define SO_RECVBUF_SIZE 256*1024
 
 static char recv_buf[RECV_BUF_SIZE];
@@ -72,8 +66,6 @@ struct cmsghdr *cmsg_nxthdr_fix(struct msghdr *__msg, struct cmsghdr *__cmsg)
 {
     return __cmsg_nxthdr_fix(__msg->msg_control, __msg->msg_controllen, __cmsg);
 }
-
-#endif				/* NS_PORT */
 
 
 void NS_CLASS aodv_socket_init()
@@ -250,44 +242,6 @@ void NS_CLASS aodv_socket_process_packet(AODV_msg * aodv_msg, int len,
     }
 }
 
-#ifdef NS_PORT
-void NS_CLASS recvAODVUUPacket(Packet * p)
-{
-    int len, i, ttl = 0;
-    struct in_addr src, dst;
-    struct hdr_cmn *ch = HDR_CMN(p);
-    struct hdr_ip *ih = HDR_IP(p);
-    hdr_aodvuu *ah = HDR_AODVUU(p);
-
-    src.s_addr = ih->saddr();
-    dst.s_addr = ih->daddr();
-    len = ch->size() - IP_HDR_LEN;
-    ttl = ih->ttl();
-
-    AODV_msg *aodv_msg = (AODV_msg *) recv_buf;
-
-    /* Only handle AODVUU packets */
-    assert(ch->ptype() == PT_AODVUU);
-
-    /* Only process incoming packets */
-    assert(ch->direction() == hdr_cmn::UP);
-
-    /* Copy message to receive buffer */
-    memcpy(recv_buf, ah, RECV_BUF_SIZE);
-
-    /* Deallocate packet, we have the information we need... */
-    Packet::free(p);
-
-    /* Ignore messages generated locally */
-    for (i = 0; i < MAX_NR_INTERFACES; i++)
-	if (this_host.devs[i].enabled &&
-	    memcmp(&src, &this_host.devs[i].ipaddr,
-		   sizeof(struct in_addr)) == 0)
-	    return;
-
-    aodv_socket_process_packet(aodv_msg, len, src, dst, ttl, NS_IFINDEX);
-}
-#else
 static void aodv_socket_read(int fd)
 {
     struct in_addr src, dst;
@@ -361,7 +315,7 @@ static void aodv_socket_read(int fd)
 
     aodv_socket_process_packet(aodv_msg, len, src, dst, ttl, dev->ifindex);
 }
-#endif				/* NS_PORT */
+
 
 void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 			       int len, u_int8_t ttl, struct dev_info *dev)
@@ -369,8 +323,6 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
     int retval = 0;
     struct timeval now;
     /* Rate limit stuff: */
-
-#ifndef NS_PORT
 
     struct sockaddr_in dst_addr;
 
@@ -387,56 +339,7 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 	alog(LOG_WARNING, 0, __FUNCTION__, "ERROR setting ttl!");
 	return;
     }
-#else
 
-    /*
-       NS_PORT: Sending of AODV_msg messages to other AODV-UU routing agents
-       by encapsulating them in a Packet.
-
-       Note: This method is _only_ for sending AODV packets to other routing
-       agents, _not_ for forwarding "regular" IP packets!
-     */
-
-    /* If we are in waiting phase after reboot, don't send any RREPs */
-    if (wait_on_reboot && aodv_msg->type == AODV_RREP)
-	return;
-
-    /*
-       NS_PORT: Don't allocate packet until now. Otherwise packet uid
-       (unique ID) space is unnecessarily exhausted at the beginning of
-       the simulation, resulting in uid:s starting at values greater than 0.
-     */
-    Packet *p = allocpkt();
-    struct hdr_cmn *ch = HDR_CMN(p);
-    struct hdr_ip *ih = HDR_IP(p);
-    hdr_aodvuu *ah = HDR_AODVUU(p);
-
-    // Clear AODVUU part of packet
-    memset(ah, '\0', ah->size());
-
-    // Copy message contents into packet
-    memcpy(ah, aodv_msg, len);
-
-    // Set common header fields
-    ch->ptype() = PT_AODVUU;
-    ch->direction() = hdr_cmn::DOWN;
-    ch->size() += len + IP_HDR_LEN;
-    ch->iface() = -2;
-    ch->error() = 0;
-    ch->prev_hop_ = (nsaddr_t) dev->ipaddr.s_addr;
-
-    // Set IP header fields
-    ih->saddr() = (nsaddr_t) dev->ipaddr.s_addr;
-    ih->daddr() = (nsaddr_t) dst.s_addr;
-    ih->ttl() = ttl;
-
-    // Note: Port number for routing agents, not AODV port number!
-    ih->sport() = RT_PORT;
-    ih->dport() = RT_PORT;
-
-    // Fake success
-    retval = len;
-#endif				/* NS_PORT */
 
     /* If rate limiting is enabled, check if we are sending either a
        RREQ or a RERR. In that case, drop the outgoing control packet
@@ -453,9 +356,7 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 		if (timeval_diff(&now, &rreq_ratel[0]) < 1000) {
 		    DEBUG(LOG_DEBUG, 0, "RATELIMIT: Dropping RREQ %ld ms",
 			  timeval_diff(&now, &rreq_ratel[0]));
-#ifdef NS_PORT
-		  	Packet::free(p);
-#endif
+
 		    return;
 		} else {
 		    memmove(rreq_ratel, &rreq_ratel[1],
@@ -473,9 +374,7 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 		if (timeval_diff(&now, &rerr_ratel[0]) < 1000) {
 		    DEBUG(LOG_DEBUG, 0, "RATELIMIT: Dropping RERR %ld ms",
 			  timeval_diff(&now, &rerr_ratel[0]));
-#ifdef NS_PORT
-		  	Packet::free(p);
-#endif
+
 		    return;
 		} else {
 		    memmove(rerr_ratel, &rerr_ratel[1],
@@ -497,12 +396,6 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 
 	gettimeofday(&this_host.bcast_time, NULL);
 
-#ifdef NS_PORT
-	ch->addr_type() = NS_AF_NONE;
-
-	sendPacket(p, dst, 0.0);
-#else
-
 	retval = sendto(dev->sock, send_buf, len, 0,
 			(struct sockaddr *) &dst_addr, sizeof(dst_addr));
 
@@ -512,19 +405,9 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 		 ip_to_str(dst));
 	    return;
 	}
-#endif
 
     } else {
 
-#ifdef NS_PORT
-	ch->addr_type() = NS_AF_INET;
-	/* We trust the decision of next hop for all AODV messages... */
-
-	if (dst.s_addr == AODV_BROADCAST)
-	    sendPacket(p, dst, 0.001 * Random::uniform());
-	else
-	    sendPacket(p, dst, 0.0);
-#else
 	retval = sendto(dev->sock, send_buf, len, 0,
 			(struct sockaddr *) &dst_addr, sizeof(dst_addr));
 
@@ -533,7 +416,6 @@ void NS_CLASS aodv_socket_send(AODV_msg * aodv_msg, struct in_addr dst,
 		 ip_to_str(dst));
 	    return;
 	}
-#endif
     }
 
     /* Do not print hello msgs... */
@@ -559,7 +441,6 @@ AODV_msg *NS_CLASS aodv_socket_queue_msg(AODV_msg * aodv_msg, int size)
 
 void aodv_socket_cleanup(void)
 {
-#ifndef NS_PORT
     int i;
 
     for (i = 0; i < MAX_NR_INTERFACES; i++) {
@@ -567,5 +448,4 @@ void aodv_socket_cleanup(void)
 	    continue;
 	close(DEV_NR(i).sock);
     }
-#endif				/* NS_PORT */
 }

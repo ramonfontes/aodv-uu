@@ -16,14 +16,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include <netinet/in.h>
 #include "aodv_hello.h"
 #include "aodv_timeout.h"
@@ -39,7 +36,6 @@
 extern int unidir_hack, receive_n_hellos, hello_jittering, optimized_hellos;
 static struct timer hello_timer;
 
-#endif
 
 /* #define DEBUG_HELLO */
 
@@ -47,12 +43,7 @@ static struct timer hello_timer;
 long NS_CLASS hello_jitter()
 {
     if (hello_jittering) {
-#ifdef NS_PORT
-	return (long) (((float) Random::integer(RAND_MAX + 1) / RAND_MAX - 0.5)
-		       * JITTER_INTERVAL);
-#else
-	return (long) (((float) random() / RAND_MAX - 0.5) * JITTER_INTERVAL);
-#endif
+		return (long) (((float) random() / RAND_MAX - 0.5) * JITTER_INTERVAL);
     } else
 	return 0;
 }

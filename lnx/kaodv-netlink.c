@@ -243,7 +243,7 @@ static int kaodv_netlink_rcv_nl_event(struct notifier_block *this,
 
     // access namespace state
     mod = net_generic(n->net, net_id);
-    printk("kaodv: net_id %d", net_id);
+    //printk("kaodv: net_id %d", net_id);
     expl = &mod->expl_state;
     queue = &mod->queue_state;
     netlink = &mod->netlink_state;

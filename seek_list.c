@@ -16,16 +16,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Authors: Erik Nordström, <erik.nordstrom@it.uu.se>
+ * Authors: Erik Nordstrï¿½m, <erik.nordstrom@it.uu.se>
  *          
  *
  *****************************************************************************/
 #include <stdlib.h>
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#include "list.h"
-#else
+
 #include "seek_list.h"
 #include "timer_queue.h"
 #include "aodv_timeout.h"
@@ -33,18 +30,13 @@
 #include "params.h"
 #include "debug.h"
 #include "list.h"
-#endif
 
-#ifndef NS_PORT
-/* The seek list is a linked list of destinations we are seeking
-   (with RREQ's). */
 
 static LIST(seekhead);
 
 #ifdef SEEK_LIST_DEBUG
 void seek_list_print();
 #endif
-#endif				/* NS_PORT */
 
 seek_list_t *NS_CLASS seek_list_insert(struct in_addr dest_addr,
 				       u_int32_t dest_seqno,
