@@ -287,51 +287,6 @@ int attach_callback_func(int fd, callback_func_t func)
    are located in the current directory. use those. Otherwise fall
    back to modprobe. */
 
-void load_modules(char *ifname)
-{
-    struct stat st;
-    char buf[1024], *l = NULL;
-    int found = 0;
-    FILE *m;
-
-    memset(buf, '\0', 64);
-
-    if (stat("./kaodv.ko", &st) == 0)
-	sprintf(buf, "/sbin/insmod kaodv.ko ifname=%s &>/dev/null", ifname);
-    else if (stat("./kaodv.o", &st) == 0)
-	sprintf(buf, "/sbin/insmod kaodv.o ifname=%s &>/dev/null", ifname);
-    else
-	sprintf(buf, "/sbin/modprobe kaodv ifname=%s &>/dev/null", ifname);
-
-    if (system(buf) == -1) {
-        fprintf(stderr, "Could not load kaodv module\n");
-        exit(-1);
-    }
-
-    usleep(100000);
-
-    /* Check result */
-    m = fopen("/proc/modules", "r");
-    while (fgets(buf, sizeof(buf), m)) {
-	l = strtok(buf, " \t");
-	if (!strcmp(l, "kaodv"))
-	    found++;
-	if (!strcmp(l, "ipchains")) {
-	    fprintf(stderr,
-		    "The ipchains kernel module is loaded and prevents AODV-UU from functioning properly.\n");
-	    exit(-1);
-	}
-    }
-    fclose(m);
-
-    if (found < 1) {
-	fprintf(stderr,
-		"A kernel module could not be loaded, check your installation... %d\n",
-		found);
-	exit(-1);
-    }
-}
-
 void remove_modules(void)
 {
 	int ret;
@@ -457,9 +412,6 @@ void host_init(char *ifname)
     } while ((iface = strtok(NULL, ",")));
 
     close(if_sock);
-
-    /* Load kernel modules */
-    load_modules(ifnames);
 
     /* Enable IP forwarding and set other kernel options... */
     if (set_kernel_options() < 0) {
