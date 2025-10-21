@@ -19,28 +19,14 @@ packets. Filtering is done in user-space, so there may be some
 performance penalties, although coding is much simplified. Stable
 operation has higher priority than performance.
 
-The code has been successfully tested in a real ad-hoc environment
-using up to 5 nodes (4 hops) without problems. It has been debugged in
-ns-2 by running extensive simulations. The performance is usually on
-par or better than the AODV version in ns-2. It has also been interop
-tested with great results. If you happen to experience less successful
-operation of this implementation, please contact the author(s) and
-describe your problems.
-
 ## Requirements
 
 Real world:
-* Linux based OS (>= 3.6.0).
+* Linux based OS.
 * Wireless LAN cards in ad-hoc/mesh mode (alternatively a wired setup can
   be used).
 
-ns-2:
-* See README.ns
-
 ## Installation
-
-If you are running AODV-UU in NS-2, then you should read README.ns for
-install instructions.
 
 Make sure you have the kernel source (or at least headers) of the
 kernel you are compiling against installed. Otherwise the kernel
@@ -221,10 +207,10 @@ command:
 ## Contact
 
 Source code and implementation questions:
-Erik Nordström <erik.nordstrom@it.uu.se>
+Erik NordstrÃ¶m <erik.nordstrom@it.uu.se>
 
 NS port questions:
-Björn Wiberg <bjorn.wiberg@home.se>
+BjÃ¶rn Wiberg <bjorn.wiberg@home.se>
 
 Misc. questions:
 Henrik Lundgren <henrikl@docs.uu.se>
