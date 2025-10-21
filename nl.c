@@ -512,8 +512,6 @@ int nl_send_add_route_msg(struct in_addr dest, struct in_addr next_hop,
 	if (rt_flags & RT_REPAIR)
 		areq.m.flags |= KAODV_RT_REPAIR;
 
-	nl_send(&aodvnl, &areq.n);
-
 	if (nl_send(&aodvnl, &areq.n) < 0) {
 		DEBUG(LOG_DEBUG, 0, "Failed to send netlink message");
 		return -1;
