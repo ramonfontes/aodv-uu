@@ -22,9 +22,6 @@
 
 #include <time.h>
 
-#ifdef NS_PORT
-#include "ns-2/aodv-uu.h"
-#else
 #include "routing_table.h"
 #include "aodv_timeout.h"
 #include "aodv_rerr.h"
@@ -37,7 +34,6 @@
 #include "params.h"
 #include "seek_list.h"
 #include "nl.h"
-#endif				/* NS_PORT */
 
 struct routing_table rt_tbl;
 
@@ -159,10 +155,9 @@ rt_table_t *NS_CLASS rt_table_insert(struct in_addr dest_addr,
 
 	} else {
 		rt_tbl.num_active++;
-#ifndef NS_PORT
+
 		nl_send_add_route_msg(dest_addr, next, hops, life, flags,
 				      ifindex);
-#endif
 	}
 
 #ifdef CONFIG_GATEWAY_DISABLE
@@ -170,22 +165,15 @@ rt_table_t *NS_CLASS rt_table_insert(struct in_addr dest_addr,
 		rt_table_update_inet_rt(rt, life);
 #endif
 
-//#ifdef NS_PORT
 	DEBUG(LOG_INFO, 0, "New timer for %s, life=%d",
 	      ip_to_str(rt->dest_addr), life);
 
 	if (life != 0)
 		timer_set_timeout(&rt->rt_timer, life);
-//#endif
+
 	/* In case there are buffered packets for this destination, we
 	 * send them on the new route. */
 	if (rt->state == VALID && seek_list_remove(seek_list_find(dest_addr))) {
-#ifdef NS_PORT
-		if (rt->flags & RT_INET_DEST)
-			packet_queue_set_verdict(dest_addr, PQ_ENC_SEND);
-		else
-			packet_queue_set_verdict(dest_addr, PQ_SEND);
-#endif
 	}
 	return rt;
 }
@@ -208,10 +196,8 @@ rt_table_t *NS_CLASS rt_table_update(rt_table_t * rt, struct in_addr next,
 		if (rt->flags & RT_REPAIR)
 			flags &= ~RT_REPAIR;
 
-#ifndef NS_PORT
 		nl_send_add_route_msg(rt->dest_addr, next, hops, lifetime,
 				      flags, rt->ifindex);
-#endif
 
 	} else if (rt->next_hop.s_addr != 0 &&
 		   rt->next_hop.s_addr != next.s_addr) {
@@ -219,10 +205,8 @@ rt_table_t *NS_CLASS rt_table_update(rt_table_t * rt, struct in_addr next,
 		DEBUG(LOG_INFO, 0, "rt->next_hop=%s, new_next_hop=%s",
 		      ip_to_str(rt->next_hop), ip_to_str(next));
 
-#ifndef NS_PORT
 		nl_send_add_route_msg(rt->dest_addr, next, hops, lifetime,
 				      flags, rt->ifindex);
-#endif
 	}
 
 	if (hops > 1 && rt->hcnt == 1) {
@@ -235,7 +219,7 @@ rt_table_t *NS_CLASS rt_table_update(rt_table_t * rt, struct in_addr next,
 		next hop... */
 		neighbor_link_break(rt);
 	}
-	
+
 	rt->flags = flags;
 	rt->dest_seqno = seqno;
 	rt->next_hop = next;
@@ -246,12 +230,10 @@ rt_table_t *NS_CLASS rt_table_update(rt_table_t * rt, struct in_addr next,
 		rt_table_update_inet_rt(rt, lifetime);
 #endif
 
-//#ifdef NS_PORT
 	rt->rt_timer.handler = &NS_CLASS route_expire_timeout;
 
 	if (!(rt->flags & RT_INET_DEST))
 		rt_table_update_timeout(rt, lifetime);
-//#endif
 
 	/* Finally, mark as VALID */
 	rt->state = state;
@@ -260,12 +242,6 @@ rt_table_t *NS_CLASS rt_table_update(rt_table_t * rt, struct in_addr next,
 	 * them on the new route. */
 	if (rt->state == VALID
 	    && seek_list_remove(seek_list_find(rt->dest_addr))) {
-#ifdef NS_PORT
-		if (rt->flags & RT_INET_DEST)
-			packet_queue_set_verdict(rt->dest_addr, PQ_ENC_SEND);
-		else
-			packet_queue_set_verdict(rt->dest_addr, PQ_SEND);
-#endif
 	}
 	return rt;
 }
@@ -333,14 +309,6 @@ void NS_CLASS rt_table_update_route_timeouts(rt_table_t * fwd_rt,
 			rt_table_update_timeout(next_hop_rt,
 						ACTIVE_ROUTE_TIMEOUT);
 
-		/* Update HELLO timer of next hop neighbor if active */
-/* 	if (!llfeedback && next_hop_rt->hello_timer.used) { */
-/* 	    struct timeval now; */
-
-/* 	    gettimeofday(&now, NULL); */
-/* 	    hello_update_timeout(next_hop_rt, &now,  */
-/* 				 ALLOWED_HELLO_LOSS * HELLO_INTERVAL); */
-/* 	} */
 	}
 }
 
@@ -455,9 +423,7 @@ int NS_CLASS rt_table_invalidate(rt_table_t * rt)
 	rt->last_hello_time.tv_sec = 0;
 	rt->last_hello_time.tv_usec = 0;
 
-#ifndef NS_PORT
 	nl_send_del_route_msg(rt->dest_addr, rt->next_hop, rt->hcnt);
-#endif
 
 
 #ifdef CONFIG_GATEWAY
@@ -537,9 +503,7 @@ void NS_CLASS rt_table_delete(rt_table_t * rt)
 
 	if (rt->state == VALID) {
 
-#ifndef NS_PORT
 		nl_send_del_route_msg(rt->dest_addr, rt->next_hop, rt->hcnt);
-#endif
 		rt_tbl.num_active--;
 	}
 	/* Make sure timers are removed... */

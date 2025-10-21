@@ -283,21 +283,6 @@ int attach_callback_func(int fd, callback_func_t func)
     return 0;
 }
 
-/* Here we find out how to load the kernel modules... If the modules
-   are located in the current directory. use those. Otherwise fall
-   back to modprobe. */
-
-void remove_modules(void)
-{
-	int ret;
-
-	ret = system("/sbin/rmmod kaodv &>/dev/null");
-
-	if (ret != 0) {
-		fprintf(stderr, "Could not remove kernel module kaodv\n");
-	}
-}
-
 void host_init(char *ifname)
 {
     struct sockaddr_in *ina;
@@ -658,5 +643,4 @@ static void cleanup(void)
 #endif
     log_cleanup();
     nl_cleanup();
-    remove_modules();
 }
